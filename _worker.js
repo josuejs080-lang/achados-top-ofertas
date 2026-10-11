@@ -14,7 +14,7 @@ function decodeEntities(s = "") {
     .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)));
 }
 function attr(tag, name) {
-  const re = new RegExp(name + '\\s*=\\s*(?:"([^"]*)"|\\'([^\\']*)\\'|([^\\s>]+))', "i");
+  const re = new RegExp(`${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, "i");
   const m = tag.match(re);
   return m ? decodeEntities(m[1] ?? m[2] ?? m[3] ?? "") : "";
 }
