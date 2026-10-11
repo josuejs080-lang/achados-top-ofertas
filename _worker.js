@@ -116,7 +116,6 @@ export default {
         let image = metaValue(html, ["og:image", "twitter:image"]) || (Array.isArray(product?.image) ? product.image[0] : product?.image) || "";
         image = absoluteUrl(image, finalUrl);
         let price = metaValue(html, [
-      let price = metaValue(html, [
   "product:price:amount",
   "og:price:amount",
   "product:sale_price:amount",
