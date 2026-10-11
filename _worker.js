@@ -115,10 +115,26 @@ export default {
         let title = metaValue(html, ["og:title", "twitter:title", "product:title"]) || product?.name || textFromTitle(html);
         let image = metaValue(html, ["og:image", "twitter:image"]) || (Array.isArray(product?.image) ? product.image[0] : product?.image) || "";
         image = absoluteUrl(image, finalUrl);
-        let price = metaValue(html, ["product:price:amount", "og:price:amount"]) || offer?.price || offer?.lowPrice || "";
-        let oldPrice = metaValue(html, ["product:original_price:amount", "product:price:original_amount"]) || "";
-        price = cleanPrice(price);
-        oldPrice = cleanPrice(oldPrice);
+        let price = metaValue(html, [
+      "product:price:amount",
+      "og:price:amount",
+      "product:sale_price:amount",
+      "twitter:data1"
+    ]) || offer?.price || offer?.lowPrice || "";
+
+    let oldPrice = metaValue(html, [
+      "product:original_price:amount",
+      "product:price:original_amount",
+      "product:retail_price:amount"
+    ]) || offer?.highPrice || "";
+
+    if (!price) {
+      const priceMatch = html.match(/"price"\s*:\s*"?(\d+(?:[.,]\d{1,2})?)"?/i);
+      if (priceMatch) price = priceMatch[1];
+    }
+
+    price = cleanPrice(price);
+    oldPrice = cleanPrice(oldPrice);
         title = String(title || "").replace(/\s+/g, " ").trim().slice(0, 240);
         return Response.json({
           title, image, price, oldPrice,
