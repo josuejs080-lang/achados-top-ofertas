@@ -1,0 +1,15 @@
+ACHADOS TOP OFERTAS — VERSÃO COM GERADOR DE COPY
+
+Conteúdo do pacote:
+- index.html: formulário de ofertas, identidade visual, prévia de oferta e gerador de texto promocional.
+- _worker.js: endpoint experimental de leitura de metadados públicos.
+
+RECURSO NOVO:
+Depois de preencher link, nome e preço, escolha o estilo, adicione benefícios (um por linha), toque em “Gerar texto do anúncio” e depois em “Copiar texto”.
+
+IMPORTANTE SOBRE A IMPORTAÇÃO AUTOMÁTICA:
+A consulta de metadados é experimental e lojas podem bloquear a leitura. A rota /api/product-meta precisa estar implantada com este worker no Cloudflare e a configuração de Static Assets com binding ASSETS. O erro 404 visto anteriormente indica que a rota não estava disponível na implantação atual.
+
+A integração oficial da Shopee não está ativada neste pacote porque a solicitação de API ainda aguarda resposta. Quando a Shopee aprovar e fornecer as credenciais, elas devem ser configuradas como secrets no Cloudflare, nunca escritas no HTML nem compartilhadas publicamente.
+
+Antes de divulgar, confira nome, preço, cupom, benefícios e link de afiliado. Não invente benefícios ou descontos. Mantenha o site antigo publicado até testar esta versão.
