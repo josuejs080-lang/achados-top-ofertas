@@ -646,10 +646,23 @@ export default {
         const html = (await response.text()).slice(0, 3000000);
         const product = parseJsonLd(html);
         const originalHost = new URL(raw).hostname.toLowerCase();
+const finalHost = new URL(finalUrl).hostname.toLowerCase();
 
-        const isShopee =
-          originalHost === "shopee.com.br" ||
-          originalHost.endsWith(".shopee.com.br");
+const isShopee =
+  originalHost === "shopee.com.br" ||
+  originalHost.endsWith(".shopee.com.br") ||
+  finalHost === "shopee.com.br" ||
+  finalHost.endsWith(".shopee.com.br");
+
+const isTikTokShop =
+  originalHost === "tiktok.com" ||
+  originalHost.endsWith(".tiktok.com") ||
+  originalHost === "tiktokshop.com" ||
+  originalHost.endsWith(".tiktokshop.com") ||
+  finalHost === "tiktok.com" ||
+  finalHost.endsWith(".tiktok.com") ||
+  finalHost === "tiktokshop.com" ||
+  finalHost.endsWith(".tiktokshop.com");
 
         if (isShopee) {
           const shopee = await fetchShopeeItem(finalUrl);
