@@ -10,94 +10,94 @@ const ALLOWED_HOSTS = [
 
 function allowedHost(hostname) {
   const h = hostname.toLowerCase();
-  retornar ALLOWED_HOSTS.some(root => h === root || h.endsWith("." + root));
+  return ALLOWED_HOSTS.some(root => h === root || h.endsWith("." + root));
 }
 
-função decodificarEntidades(s = "") {
-  retornar s
-    .replace(/&/g, "&")
-    .replace(/"/g, '"')
-    .replace(/'|'/g, "'")
-    .replace(/</g, "<")
-    .replace(/>/g, ">")
+function decodeEntities(s = "") {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
     .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)));
 }
 
-função attr(tag, nome) {
+function attr(tag, name) {
   const re = new RegExp(`${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, "i");
   const m = tag.match(re);
-  retornar m ? decodificarEntidades(m[1] ?? m[2] ?? m[3] ?? "") : "";
+  return m ? decodeEntities(m[1] ?? m[2] ?? m[3] ?? "") : "";
 }
 
-função metaValor(html, chaves) {
+function metaValue(html, keys) {
   const tags = html.match(/<meta\b[^>]*>/gi) || [];
-  para (const key de keys) {
-    para (const tag de tags) {
-      const nome = (
-        attr(tag, "propriedade") ||
-        attr(tag, "nome") ||
+  for (const key of keys) {
+    for (const tag of tags) {
+      const name = (
+        attr(tag, "property") ||
+        attr(tag, "name") ||
         attr(tag, "itemprop")
-      ).paraLowerCase();
+      ).toLowerCase();
 
-      se (nome === chave.paraLowerCase()) {
+      if (name === key.toLowerCase()) {
         const value = attr(tag, "content");
-        se (valor) retorne valor.trim();
+        if (value) return value.trim();
       }
     }
   }
-  retornar "";
+  return "";
 }
 
-função parseJsonLd(html) {
+function parseJsonLd(html) {
   const scripts = html.match(
     /<script\b[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi
   ) || [];
 
-  const produtos = [];
+  const products = [];
 
-  para (const script de scripts) {
-    const corpo = script
+  for (const script of scripts) {
+    const body = script
       .replace(/^.*?>/s, "")
       .replace(/<\/script>\s*$/i, "");
 
-    tentar {
+    try {
       const json = JSON.parse(body);
 
-      função visit(obj) {
-        se (!obj || typeof obj !== "object") retornar;
+      function visit(obj) {
+        if (!obj || typeof obj !== "object") return;
         if (Array.isArray(obj)) return obj.forEach(visit);
 
         const types = [].concat(obj["@type"] || []);
-        se (types.some(t => String(t).toLowerCase() === "product")) {
-          produtos.push(obj);
+        if (types.some(t => String(t).toLowerCase() === "product")) {
+          products.push(obj);
         }
 
-        se (obj["@graph"]) visite(obj["@graph"]);
-        se (obj.itemListElement) visite(obj.itemListElement);
+        if (obj["@graph"]) visit(obj["@graph"]);
+        if (obj.itemListElement) visit(obj.itemListElement);
       }
 
-      visitar(json);
-    } pegar {}
+      visit(json);
+    } catch {}
   }
 
-  retornar produtos[0] || nulo;
+  return products[0] || null;
 }
 
-função textoDoTítulo(html) {
+function textFromTitle(html) {
   const m = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
-  retornar m
+  return m
     ? decodeEntities(m[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim())
     : "";
 }
 
-função preçoLimpo(valor) {
-  se (valor == nulo) retorne "";
+function cleanPrice(value) {
+  if (value == null) return "";
 
   let s = String(value).replace(/[^\d.,]/g, "").trim();
-  se (!s) retornar "";
+  if (!s) return "";
 
-  se (s.includes(",") && s.includes(".")) {
+  if (s.includes(",") && s.includes(".")) {
     s = s.lastIndexOf(",") > s.lastIndexOf(".")
       ? s.replace(/\./g, "").replace(",", ".")
       : s.replace(/,/g, "");
@@ -105,75 +105,75 @@ função preçoLimpo(valor) {
     s = s.replace(",", ".");
   }
 
-  const n = Número(s);
-  retorna Number.isFinite(n) && n > 0 && n < 100000000
+  const n = Number(s);
+  return Number.isFinite(n) && n > 0 && n < 100000000
     ? n.toFixed(2)
     : "";
 }
 
-função absoluteUrl(valor, base) {
-  tentar {
-    const u = new URL(valor, base);
-    retornar ["https:", "http:"].includes(u.protocol) ? u.href : "";
-  } pegar {
-    retornar "";
+function absoluteUrl(value, base) {
+  try {
+    const u = new URL(value, base);
+    return ["https:", "http:"].includes(u.protocol) ? u.href : "";
+  } catch {
+    return "";
   }
 }
 
-função obterOferta(produto) {
-  se (!produto?.ofertas) retorne {};
-  retornar Array.isArray(produto.ofertas)
-    ? produto.ofertas[0] || {}
-    : ofertas de produtos;
+function getOffer(product) {
+  if (!product?.offers) return {};
+  return Array.isArray(product.offers)
+    ? product.offers[0] || {}
+    : product.offers;
 }
 
-função extrairPreço(html, produto) {
-  const oferta = getOffer(produto);
+function extractPrice(html, product) {
+  const offer = getOffer(product);
   let price = cleanPrice(offer.price ?? offer.lowPrice ?? "");
-  se (preço) retornar preço;
+  if (price) return price;
 
-  preço = preçoLimpo(metaValor(html, [
-    "produto:preço:quantidade",
-    "og:preço:quantidade",
-    "produto:preço_de_venda:quantidade",
-    "produto:preço"
+  price = cleanPrice(metaValue(html, [
+    "product:price:amount",
+    "og:price:amount",
+    "product:sale_price:amount",
+    "product:price"
   ]));
-  se (preço) retornar preço;
+  if (price) return price;
 
-  const padrões = [
-    /"preço_de_venda"\s*:\s*"?([\d.,]+)"?/i,
-    /"preço_atual"\s*:\s*"?([\d.,]+)"?/i,
-    /"preço"\s*:\s*\{\s*"quantidade"\s*:\s*"?([\d.,]+)"?/i,
-    /"preço"\s*:\s*"?(\\d+(?:[.,]\d{1,2})?)"?/i,
+  const patterns = [
+    /"sale_price"\s*:\s*"?([\d.,]+)"?/i,
+    /"current_price"\s*:\s*"?([\d.,]+)"?/i,
+    /"price"\s*:\s*\{\s*"amount"\s*:\s*"?([\d.,]+)"?/i,
+    /"price"\s*:\s*"?(\\d+(?:[.,]\d{1,2})?)"?/i,
     /itemprop=["']price["'][^>]*content=["']([\d.,]+)["']/i,
     /content=["']([\d.,]+)["'][^>]*itemprop=["']price["']/i
   ];
 
-  para (const re de padrões) {
+  for (const re of patterns) {
     const m = html.match(re);
-    se (m && (preço = preçoLimpo(m[1]))) retorne preço;
+    if (m && (price = cleanPrice(m[1]))) return price;
   }
 
-  retornar "";
+  return "";
 }
 
-função extrairPreçoAntigo(html, produto) {
-  const oferta = getOffer(produto);
-  retornar preço limpo(
-    oferta.preço alto ??
-    metaValor(html, [
-      "produto:preço_original:quantidade",
-      "produto:preço:valor_original",
-      "produto:preço_de_varejo:quantidade"
+function extractOldPrice(html, product) {
+  const offer = getOffer(product);
+  return cleanPrice(
+    offer.highPrice ??
+    metaValue(html, [
+      "product:original_price:amount",
+      "product:price:original_amount",
+      "product:retail_price:amount"
     ])
   );
 }
 
 /* ===== SHOPEE ===== */
 
-função obterIdsShopee(valor) {
-  tentar {
-    const u = new URL(valor);
+function getShopeeIds(value) {
+  try {
+    const u = new URL(value);
     let shopid = u.searchParams.get("shopid") || "";
     let itemid = u.searchParams.get("itemid") || "";
 
@@ -181,167 +181,167 @@ função obterIdsShopee(valor) {
       u.pathname.match(/\/product\/(\d{5,})\/(\d{5,})/i) ||
       u.pathname.match(/-i\.(\d{5,})\.(\d{5,})(?:\/|$)/i);
 
-    se (m) {
+    if (m) {
       shopid = shopid || m[1];
       itemid = itemid || m[2];
     }
 
-    retornar /^\d+$/.test(shopid) && /^\d+$/.test(itemid)
+    return /^\d+$/.test(shopid) && /^\d+$/.test(itemid)
       ? { shopid, itemid }
-      : nulo;
-  } pegar {
-    retornar nulo;
+      : null;
+  } catch {
+    return null;
   }
 }
 
-função shopeePrice(valor) {
-  se (valor == nulo || valor === "") retorne "";
+function shopeePrice(value) {
+  if (value == null || value === "") return "";
 
-  const n = Número(valor);
-  se (!Number.isFinite(n) || n <= 0) retorne "";
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return "";
 
-  retornar preçoLimpo(n >= 100000 ? n / 100000 : n);
+  return cleanPrice(n >= 100000 ? n / 100000 : n);
 }
 
-função assíncrona buscarItemShopee(URLfinal) {
-  constids = getShopeeIds(finalUrl);
-  se (!ids) retornar nulo;
+async function fetchShopeeItem(finalUrl) {
+  const ids = getShopeeIds(finalUrl);
+  if (!ids) return null;
 
-  tentar {
+  try {
     const apiUrl = new URL("https://shopee.com.br/api/v4/item/get");
     apiUrl.searchParams.set("itemid", ids.itemid);
     apiUrl.searchParams.set("shopid", ids.shopid);
 
     const response = await fetch(apiUrl.href, {
-      cabeçalhos: {
+      headers: {
         "User-Agent": "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36",
-        "Aceitar": "application/json",
-        "Referenciador": "https://shopee.com.br/"
+        "Accept": "application/json",
+        "Referer": "https://shopee.com.br/"
       }
     });
 
-    se (!response.ok) retorne nulo;
+    if (!response.ok) return null;
 
     const json = await response.json();
     const item = json?.data?.item || json?.data;
-    Se (!item || typeof item !== "objeto") retornar nulo;
+    if (!item || typeof item !== "object") return null;
 
     const rawImage = item.image || item.images?.[0] || "";
     const image = rawImage
       ? (/^https?:\/\//i.test(rawImage)
-          ? imagem bruta
+          ? rawImage
           : "https://down-br.img.susercontent.com/file/" + rawImage)
       : "";
 
-    const preço = preçoShopee(
+    const price = shopeePrice(
       item.price_min ?? item.price ?? item.price_max ?? ""
     );
 
-    const preçoAntigo = preçoShopee(
+    const oldPrice = shopeePrice(
       item.price_before_discount ??
       item.price_min_before_discount ??
       ""
     );
 
-    Se (!item.name && !price && !image) retornar nulo;
+    if (!item.name && !price && !image) return null;
 
-    retornar {
-      título: String(item.name || "").trim(),
-      imagem,
-      preço,
-      preço antigo,
-      URL final
+    return {
+      title: String(item.name || "").trim(),
+      image,
+      price,
+      oldPrice,
+      finalUrl
     };
-  } pegar {
-    retornar nulo;
+  } catch {
+    return null;
   }
 }
 
 /* ===== OAUTH MERCADO LIVRE ===== */
 
-função redirectUri(request) {
-  retornar novo URL("/api/ml-callback", request.url).href;
+function redirectUri(request) {
+  return new URL("/api/ml-callback", request.url).href;
 }
 
-função jsonError(mensagem, status = 400) {
-  retornar Response.json(
-    { erro: mensagem },
+function jsonError(message, status = 400) {
+  return Response.json(
+    { error: message },
     { status, headers: { "Cache-Control": "no-store" } }
   );
 }
 
-função base64url(bytes) {
+function base64url(bytes) {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
 
-  retornar btoa(binário)
+  return btoa(binary)
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/g, "");
 }
 
-função assíncrona criarPkce() {
+async function createPkce() {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
 
   const verifier = base64url(bytes);
   const digest = await crypto.subtle.digest(
     "SHA-256",
-    novo TextEncoder().encode(verificador)
+    new TextEncoder().encode(verifier)
   );
 
-  retornar {
-    verificador,
-    desafio: base64url(novo Uint8Array(digest))
+  return {
+    verifier,
+    challenge: base64url(new Uint8Array(digest))
   };
 }
 
-função assíncrona salvarToken(env, token) {
+async function saveToken(env, token) {
   token.expires_at = Date.now() + Number(token.expires_in || 0) * 1000;
   await env.ML_TOKENS.put("oauth", JSON.stringify(token));
-  token de retorno;
+  return token;
 }
 
-função assíncrona getMlToken(env) {
+async function getMlToken(env) {
   if (!env.ML_TOKENS || !env.ML_CLIENT_ID || !env.ML_CLIENT_SECRET) {
     throw new Error("Faltam as configurações da API do Mercado Livre.");
   }
 
   const raw = await env.ML_TOKENS.get("oauth");
-  se (!raw) retornar nulo;
+  if (!raw) return null;
 
-  deixe o token;
-  tentar {
+  let token;
+  try {
     token = JSON.parse(raw);
-  } pegar {
-    retornar nulo;
+  } catch {
+    return null;
   }
 
-  se (
+  if (
     token.access_token &&
     token.expires_at &&
     Date.now() < token.expires_at - 60000
   ) {
-    token de retorno;
+    return token;
   }
 
-  Se (!token.refresh_token) retornar nulo;
+  if (!token.refresh_token) return null;
 
   const form = new URLSearchParams({
     grant_type: "refresh_token",
     client_id: env.ML_CLIENT_ID,
     client_secret: env.ML_CLIENT_SECRET,
-    token_de_atualização: token.token_de_atualização
+    refresh_token: token.refresh_token
   });
 
   const response = await fetch("https://api.mercadolibre.com/oauth/token", {
-    método: "POST",
-    cabeçalhos: { "Content-Type": "application/x-www-form-urlencoded" },
-    corpo: forma
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: form
   });
 
-  se (!response.ok) {
-    lançar novo Erro(
+  if (!response.ok) {
+    throw new Error(
       "A autorização expirou ou não pôde ser renovada. Acesse /api/ml-auth para reconectar."
     );
   }
@@ -349,30 +349,30 @@ função assíncrona getMlToken(env) {
   const fresh = await response.json();
   if (!fresh.refresh_token) fresh.refresh_token = token.refresh_token;
 
-  retornar saveToken(env, fresh);
+  return saveToken(env, fresh);
 }
 
 /* ===== BUSCA DE CÓDIGOS DE ANÚNCIO MLB ===== */
 
-função extractMlItemIds(finalUrl, html = "") {
-  const ids = novo Set();
+function extractMlItemIds(finalUrl, html = "") {
+  const ids = new Set();
 
-  função adicionarId(valor) {
-    se (!valor) retornar;
+  function addId(value) {
+    if (!value) return;
     const matches = String(value).match(/\bMLB-?\d{6,}\b/gi) || [];
 
-    para (constante correspondência de correspondências) {
+    for (const match of matches) {
       ids.add(match.replace("-", "").toUpperCase());
-      se (ids.size >= 30) retorne;
+      if (ids.size >= 30) return;
     }
   }
 
-  função adicionarDaUrl(valor) {
-    se (!valor) retornar;
+  function addFromUrl(value) {
+    if (!value) return;
 
-    tentar {
-      const u = new URL(valor, URLfinal);
-      se (!allowedHost(u.hostname)) retorne;
+    try {
+      const u = new URL(value, finalUrl);
+      if (!allowedHost(u.hostname)) return;
 
       const pathMatch = u.pathname.match(/\/MLB-?(\d{6,})(?:\/|$)/i);
       if (pathMatch) addId("MLB" + pathMatch[1]);
@@ -380,153 +380,153 @@ função extractMlItemIds(finalUrl, html = "") {
       addId(u.searchParams.get("item_id"));
       addId(u.searchParams.get("itemId"));
       addId(u.searchParams.get("wid"));
-      adicionarId(u.href);
-    } pegar {}
+      addId(u.href);
+    } catch {}
   }
 
-  adicionarDeUrl(UrlFinal);
+  addFromUrl(finalUrl);
 
   const tags = html.match(/<(?:link|meta|a)\b[^>]*>/gi) || [];
-  para (const tag de tags) {
+  for (const tag of tags) {
     addFromUrl(attr(tag, "href"));
     addFromUrl(attr(tag, "content"));
-    adicionarId(attr(tag, "href"));
-    adicionarId(attr(tag, "content"));
-    se (ids.size >= 30) interrompa;
+    addId(attr(tag, "href"));
+    addId(attr(tag, "content"));
+    if (ids.size >= 30) break;
   }
 
   const canonical = html.match(
     /<link\b[^>]*rel=["']canonical["'][^>]*>/i
   );
-  se (canônico) adicionarDeUrl(attr(canônico[0], "href"));
+  if (canonical) addFromUrl(attr(canonical[0], "href"));
 
   addFromUrl(metaValue(html, ["og:url", "twitter:url"]));
 
   const decodedHtml = html
     .replace(/\\u0026/gi, "&")
     .replace(/\\\//g, "/")
-    .replace(/&/g, "&");
+    .replace(/&amp;/g, "&");
 
-  adicionarId(Html decodificado);
+  addId(decodedHtml);
 
   const foundUrls =
     decodedHtml.match(/https?:\/\/[^"'<>\\\s]+/gi) || [];
 
-  para (valor constante de foundUrls) {
-    adicionarDeUrl(valor);
-    se (ids.size >= 30) interrompa;
+  for (const value of foundUrls) {
+    addFromUrl(value);
+    if (ids.size >= 30) break;
   }
 
-  retornar [...ids].slice(0, 30);
+  return [...ids].slice(0, 30);
 }
 
-função assíncrona buscarMlItem(itemId, env) {
+async function fetchMlItem(itemId, env) {
   const token = await getMlToken(env);
-  se (!token) retornar { precisa de autorização: verdadeiro };
+  if (!token) return { needsAuthorization: true };
 
-  const resposta = aguardar busca(
+  const response = await fetch(
     "https://api.mercadolibre.com/items/" + encodeURIComponent(itemId),
     {
-      cabeçalhos: {
-        Autorização: "Portador " + token.access_token,
-        Aceitar: "application/json"
+      headers: {
+        Authorization: "Bearer " + token.access_token,
+        Accept: "application/json"
       }
     }
   );
 
-  se (!response.ok) {
+  if (!response.ok) {
     const detail = await response.text();
-    lançar novo Erro(
-      "A API do Mercado Livre não devolveu o item (HTTP " +
+    throw new Error(
+      "A API do Mercado Livre não retornou o item (HTTP " +
       response.status + "): " + detail.slice(0, 300)
     );
   }
 
   const item = await response.json();
 
-  retornar {
-    título: item.title || "",
-    imagem:
-      item.miniatura ||
+  return {
+    title: item.title || "",
+    image:
+      item.thumbnail ||
       item.pictures?.[0]?.secure_url ||
       item.pictures?.[0]?.url ||
-      ","
-    preço: preçoLimpo(item.preço),
-    preço_antigo: preço_limpo(item.preço_original),
-    URL final: item.permalink || ""
+      "",
+    price: cleanPrice(item.price),
+    oldPrice: cleanPrice(item.original_price),
+    finalUrl: item.permalink || ""
   };
 }
 
 /* ===== RESOLUÇÃO DE LINKS ===== */
 
-função assíncrona getAllowedPage(inputUrl) {
-  deixe a corrente;
+async function getAllowedPage(inputUrl) {
+  let current;
 
-  tentar {
-    atual = novo URL(inputUrl);
-  } pegar {
+  try {
+    current = new URL(inputUrl);
+  } catch {
     throw new Error("O link informado não é válido.");
   }
 
-  se (current.protocol !== "https:" || !allowedHost(current.hostname)) {
-    lançar novo Erro(
+  if (current.protocol !== "https:" || !allowedHost(current.hostname)) {
+    throw new Error(
       "Use um link HTTPS da Shopee, Mercado Livre ou TikTok Shop."
     );
   }
 
-  para (seja i = 0; i < 6; i++) {
+  for (let i = 0; i < 6; i++) {
     const response = await fetch(current.href, {
-      redirecionar: "manual",
-      cabeçalhos: {
-        "User-Agent": "Mozilla/5.0 (compatível; AcadosTopPreview/1.0)",
-        "Aceitar": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+      redirect: "manual",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; AchadosTopPreview/1.0)",
+        "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
         "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.7"
       }
     });
 
-    se ([301, 302, 303, 307, 308].includes(response.status)) {
+    if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers.get("Location");
-      se (!localização) {
+      if (!location) {
         throw new Error("A loja redirecionou sem informar o destino.");
       }
 
-      atual = nova URL(localização, atual);
+      current = new URL(location, current);
 
-      se (current.protocol !== "https:" || !allowedHost(current.hostname)) {
-        throw new Error("O link redirecionado para um domínio não permitido.");
+      if (current.protocol !== "https:" || !allowedHost(current.hostname)) {
+        throw new Error("O link redirecionou para um domínio não permitido.");
       }
 
-      continuar;
+      continue;
     }
 
-    se (!response.ok) {
+    if (!response.ok) {
       throw new Error("A loja respondeu com status " + response.status + ".");
     }
 
     const type = response.headers.get("content-type") || "";
-    se (
+    if (
       !type.includes("text/html") &&
       !type.includes("application/xhtml+xml")
     ) {
       throw new Error("A página não retornou HTML legível.");
     }
 
-    retornar { resposta, URL final: current.href };
+    return { response, finalUrl: current.href };
   }
 
   throw new Error("O link teve redirecionamentos demais.");
 }
 
-/* ===== PONTOS FINAIS ===== */
+/* ===== ENDPOINTS ===== */
 
-exportar padrão {
+export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    se (url.pathname === "/api/ml-auth") {
-      se (!env.ML_CLIENT_ID || !env.ML_CLIENT_SECRET || !env.ML_TOKENS) {
-        retornar jsonError(
-          "Configurar ML_CLIENT_ID, ML_CLIENT_SECRET eo KV ML_TOKENS."
+    if (url.pathname === "/api/ml-auth") {
+      if (!env.ML_CLIENT_ID || !env.ML_CLIENT_SECRET || !env.ML_TOKENS) {
+        return jsonError(
+          "Configure ML_CLIENT_ID, ML_CLIENT_SECRET e o KV ML_TOKENS.",
           500
         );
       }
@@ -537,12 +537,12 @@ exportar padrão {
       const state = Array.from(
         bytes,
         b => b.toString(16).padStart(2, "0")
-      ).juntar("");
+      ).join("");
 
       const pkce = await createPkce();
 
-      aguarde env.ML_TOKENS.put(
-        "estado:" + estado,
+      await env.ML_TOKENS.put(
+        "state:" + state,
         JSON.stringify({ verifier: pkce.verifier }),
         { expirationTtl: 600 }
       );
@@ -558,12 +558,12 @@ exportar padrão {
       authUrl.searchParams.set("code_challenge", pkce.challenge);
       authUrl.searchParams.set("code_challenge_method", "S256");
 
-      retornar Response.redirect(authUrl.href, 302);
+      return Response.redirect(authUrl.href, 302);
     }
 
-    se (url.pathname === "/api/ml-callback") {
-      se (url.searchParams.get("error")) {
-        retornar nova resposta(
+    if (url.pathname === "/api/ml-callback") {
+      if (url.searchParams.get("error")) {
+        return new Response(
           "A autorização foi recusada. Volte ao Achados Top e tente novamente.",
           { status: 400 }
         );
@@ -572,118 +572,118 @@ exportar padrão {
       const code = url.searchParams.get("code");
       const state = url.searchParams.get("state");
 
-      se (!código || !estado || !env.ML_TOKENS) {
+      if (!code || !state || !env.ML_TOKENS) {
         return jsonError("Retorno OAuth incompleto.", 400);
       }
 
-      const stateKey = "estado:" + estado;
+      const stateKey = "state:" + state;
       const savedState = await env.ML_TOKENS.get(stateKey);
 
-      se (!savedState) {
-        retornar jsonError(
+      if (!savedState) {
+        return jsonError(
           "Estado OAuth inválido ou expirado. Inicie uma nova autorização.",
           400
         );
       }
 
-      deixe pkceData;
-      tentar {
+      let pkceData;
+      try {
         pkceData = JSON.parse(savedState);
-      } pegar {
+      } catch {
         return jsonError("Dados PKCE inválidos. Tente novamente.", 400);
       }
 
-      se (!pkceData.verifier) {
-        retornar jsonError(
+      if (!pkceData.verifier) {
+        return jsonError(
           "Code verifier ausente. Inicie uma nova autorização.",
           400
         );
       }
 
-      aguarde env.ML_TOKENS.delete(stateKey);
+      await env.ML_TOKENS.delete(stateKey);
 
       const form = new URLSearchParams({
         grant_type: "authorization_code",
         client_id: env.ML_CLIENT_ID,
         client_secret: env.ML_CLIENT_SECRET,
-        código,
+        code,
         redirect_uri: redirectUri(request),
-        verificador_de_código: pkceData.verificador
+        code_verifier: pkceData.verifier
       });
 
-      const resposta = aguardar busca(
+      const response = await fetch(
         "https://api.mercadolibre.com/oauth/token",
         {
-          método: "POST",
-          cabeçalhos: {
+          method: "POST",
+          headers: {
             "Content-Type": "application/x-www-form-urlencoded"
           },
-          corpo: forma
+          body: form
         }
       );
 
-      se (!response.ok) {
+      if (!response.ok) {
         const detail = await response.text();
-        retornar nova resposta(
-          "Erro OAuth HTTP " + response.status + ": " + detalhe,
+        return new Response(
+          "Erro OAuth HTTP " + response.status + ": " + detail,
           {
             status: 502,
-            cabeçalhos: {
+            headers: {
               "Content-Type": "text/plain; charset=utf-8",
-              "Controle de cache": "não armazenar"
+              "Cache-Control": "no-store"
             }
           }
         );
       }
 
       const token = await response.json();
-      aguardar salvarToken(env, token);
+      await saveToken(env, token);
 
-      retornar nova resposta(
+      return new Response(
         "Conta do Mercado Livre conectada ao Achados Top. Você já pode voltar ao site.",
         {
-          cabeçalhos: {
+          headers: {
             "Content-Type": "text/plain; charset=utf-8",
-            "Controle de cache": "não armazenar"
+            "Cache-Control": "no-store"
           }
         }
       );
     }
 
-    se (url.pathname === "/api/product-meta") {
-      se (request.method !== "GET") {
+    if (url.pathname === "/api/product-meta") {
+      if (request.method !== "GET") {
         return jsonError("Método não permitido.", 405);
       }
 
       const raw = url.searchParams.get("url");
-      se (!raw || raw.length > 3000) {
+      if (!raw || raw.length > 3000) {
         return jsonError("Informe um link de produto válido.", 400);
       }
 
-      tentar {
+      try {
         const { response, finalUrl } = await getAllowedPage(raw);
         const html = (await response.text()).slice(0, 3000000);
-        const produto = parseJsonLd(html);
+        const product = parseJsonLd(html);
         const originalHost = new URL(raw).hostname.toLowerCase();
 
-        const éShopee =
-          host original === "shopee.com.br" ||
+        const isShopee =
+          originalHost === "shopee.com.br" ||
           originalHost.endsWith(".shopee.com.br");
 
-        se (éShopee) {
+        if (isShopee) {
           const shopee = await fetchShopeeItem(finalUrl);
 
-          se (shopee && shopee.title) {
-            retornar Response.json(
+          if (shopee && shopee.title) {
+            return Response.json(
               {
-                título: shopee.title.slice(0, 240),
-                imagem: absoluteUrl(shopee.image, finalUrl),
-                Preço: shopee.price,
-                preço antigo: shopee.preço antigo,
-                URL final,
-                Observação: shopee.price
+                title: shopee.title.slice(0, 240),
+                image: absoluteUrl(shopee.image, finalUrl),
+                price: shopee.price,
+                oldPrice: shopee.oldPrice,
+                finalUrl,
+                note: shopee.price
                   ? "Dados consultados na Shopee; confira o preço antes de divulgar."
-                  : "Nome encontrado, mas o Shopee não retornau preço legível."
+                  : "Nome encontrado, mas a Shopee não retornou preço legível."
               },
               { headers: { "Cache-Control": "no-store" } }
             );
@@ -691,51 +691,69 @@ exportar padrão {
         }
 
         const isMercadoLivre =
-          host original === "meli.la" ||
+          originalHost === "meli.la" ||
           originalHost.endsWith(".meli.la") ||
           originalHost === "mercadolivre.com.br" ||
           originalHost.endsWith(".mercadolivre.com.br") ||
           originalHost === "mercadolibre.com" ||
           originalHost.endsWith(".mercadolibre.com");
 
-        se (éMercadoLivre) {
+        if (isMercadoLivre) {
           const itemIds = extractMlItemIds(finalUrl, html);
 
-          se (!itemIds.length) {
-            retornar Response.json(
+          if (!itemIds.length) {
+            return Response.json(
               {
-                título:
-                  metaValue(html, ["og:título", "twitter:título"]) ||
-                  textoDoTítulo(html),
-                imagem: URLabsoluta(
-                  metaValue(html, ["og:imagem", "twitter:imagem"]),
-                  URL final
+                title:
+                  metaValue(html, ["og:title", "twitter:title"]) ||
+                  textFromTitle(html),
+                image: absoluteUrl(
+                  metaValue(html, ["og:image", "twitter:image"]),
+                  finalUrl
                 ),
-                preço: "",
-                preço antigo: "",
-                URL final,
-                observação:
+                price: "",
+                oldPrice: "",
+                finalUrl,
+                note:
                   "O link social não expôs um código MLB identificável. A busca ampliada não encontrou um anúncio individual para consultar."
               },
               { headers: { "Cache-Control": "no-store" } }
             );
           }
 
-          seja ml = nulo;
+          let ml = null;
           let needsAuthorization = false;
 
-          para (const itemId de itemIds) {
-            tentar {
+          for (const itemId of itemIds) {
+            try {
               const candidate = await fetchMlItem(itemId, env);
 
-              se (candidato.precisaDeAutorização) {
-                precisa de autorização = verdadeiro;
-                quebrar;
+              if (candidate.needsAuthorization) {
+                needsAuthorization = true;
+                break;
               }
 
-              se (candidato.título && candidato.preço) {
-                ml = candidato;
-                quebrar;
+              if (candidate.title && candidate.price) {
+                ml = candidate;
+                break;
               }
-            } pegar {
-              // Tenta o próximo código encontrado
+            } catch {
+              // Tenta o próximo código encontrado.
+            }
+          }
+
+          if (needsAuthorization) {
+            return jsonError(
+              "Conecte sua conta do Mercado Livre em /api/ml-auth.",
+              401
+            );
+          }
+
+          if (!ml) {
+            return Response.json(
+              {
+                title:
+                  metaValue(html, ["og:title", "twitter:title"]) ||
+                  textFromTitle(html),
+                image: absoluteUrl(
+                  metaValue(html, ["og:image", "twit
