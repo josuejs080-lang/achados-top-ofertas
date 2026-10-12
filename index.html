@@ -67,7 +67,31 @@ function history(){try{return JSON.parse(localStorage.getItem('achadosTopHistory
 function drawHistory(){const root=$('historyList');root.replaceChildren();const list=history();if(!list.length){root.textContent='Nenhuma oferta salva ainda.';return}list.forEach(d=>{const row=document.createElement('div');row.className='history-item';if(d.image){const im=document.createElement('img');im.src=d.image;im.alt='';row.append(im)}const info=document.createElement('div');info.className='info';const t=document.createElement('strong');t.textContent=d.title;const p=document.createElement('span');p.textContent=money(d.price);info.append(t,p);const b=document.createElement('button');b.className='light';b.textContent='Reabrir';b.onclick=()=>{['url','title','price','old','coupon','image','extra'].forEach((id,i)=>$(id).value=[d.url,d.title,d.price,d.old||'',d.coupon||'',d.image||'',d.extra||''][i]);$('store').textContent=d.store;preview();window.scrollTo({top:0,behavior:'smooth'})};row.append(info,b);root.append(row)})}
 function saveHistory(d){const list=history().filter(x=>x.url!==d.url||x.title!==d.title);list.unshift({...d,savedAt:new Date().toISOString()});try{localStorage.setItem('achadosTopHistory',JSON.stringify(list.slice(0,15)))}catch{}drawHistory()}
 $('clearHistory').onclick=()=>{if(confirm('Apagar o histórico deste aparelho?')){localStorage.removeItem('achadosTopHistory');drawHistory()}};
-function message(d){let m='🔥 OLHA ESSE ACHADINHO!\n\n✨ '+d.title+'\n';if(d.price)m+='💰 Por '+money(d.price)+'\n';if(d.old)m+='🏷️ Antes: '+money(d.old)+'\n';if(d.coupon)m+='🎟️ Cupom: '+d.coupon+'\n';if(d.extra)m+='📌 '+d.extra+'\n';return m+'\n🛒 Confira aqui: '+d.url+'\n\n⚠️ Preço e disponibilidade podem mudar.'}
+
+function message(d) {
+  const hooks = [
+    '🔥 OLHA ESSE ACHADINHO!',
+    '😱 VOCÊ PRECISA VER ISSO!',
+    '🛍️ MAIS UM ACHADO INCRÍVEL!',
+    '🤩 OLHA O QUE EU ENCONTREI!',
+    '🚨 ACHADINHO QUE VALE A PENA CONFERIR!',
+    '💥 ESSE ACHADO MERECE SUA ATENÇÃO!',
+    '💛 MAIS UMA DESCOBERTA DO ACHADOS TOP!'
+  ];
+
+  const hook = hooks[Math.floor(Math.random() * hooks.length)];
+
+  let m = hook + '\n\n✨ ' + d.title + '\n';
+
+  if (d.price) m += '💰 Por ' + money(d.price) + '\n';
+  if (d.old) m += '🏷️ De: ' + money(d.old) + '\n';
+  if (d.coupon) m += '🎟️ Cupom: ' + d.coupon + '\n';
+  if (d.extra) m += '📌 ' + d.extra + '\n';
+
+  return m + '\n🛒 Confira aqui: ' + d.url +
+    '\n\n⚠️ Preço e disponibilidade podem mudar.';
+}
+  
 function encode(d){const bytes=new TextEncoder().encode(JSON.stringify(d));let s='';bytes.forEach(b=>s+=String.fromCharCode(b));return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
 $('form').onsubmit=e=>{e.preventDefault();const url=validLink($('url').value.trim());if(!url){status('Confira o link de afiliado.',true);return}const d={url,title:$('title').value.trim(),price:$('price').value.trim(),old:$('old').value.trim(),coupon:$('coupon').value.trim(),image:$('image').value.trim(),extra:$('extra').value.trim(),store:storeName(url)};if(!d.title||!d.price){status('Preencha o nome e o preço atual do anúncio.',true);return}const base=location.href.split('?')[0].split('#')[0];$('sharelink').value=base+'?oferta='+encode(d);$('message').value=message(d);$('generated').classList.remove('hidden');saveHistory(d);status('Oferta criada. Copie a mensagem ou o link para divulgar.')};
 async function copy(t){try{await navigator.clipboard.writeText(t);status('Copiado!')}catch{prompt('Copie o texto abaixo:',t)}}
