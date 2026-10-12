@@ -1,0 +1,5 @@
+const CACHE_NAME="achados-top-shell-v1";
+const FILES=["/","/index.html","/manifest.webmanifest","/icon.svg","/banner-achados-top.jpg"];
+self.addEventListener("install",event=>{event.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(FILES)));self.skipWaiting()});
+self.addEventListener("activate",event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE_NAME).map(k=>caches.delete(k)))));self.clients.claim()});
+self.addEventListener("fetch",event=>{const r=event.request,u=new URL(r.url);if(r.method!=="GET"||u.origin!==self.location.origin||u.pathname.startsWith("/api/"))return;event.respondWith(fetch(r).then(res=>{if(res.ok&&res.type==="basic"){const copy=res.clone();caches.open(CACHE_NAME).then(c=>c.put(r,copy))}return res}).catch(async()=>{const cached=await caches.match(r);if(cached)return cached;if(r.mode==="navigate")return caches.match("/index.html");return new Response("Offline",{status:503})}))});

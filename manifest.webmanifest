@@ -1,0 +1,14 @@
+{
+  "id": "/",
+  "name": "Achados Top - Central de Ofertas",
+  "short_name": "Achados Top",
+  "description": "Monte ofertas da Shopee e do Mercado Livre para compartilhar.",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f4f1",
+  "theme_color": "#171717",
+  "icons": [{"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}]
+}
