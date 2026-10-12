@@ -169,7 +169,7 @@ function extractOldPrice(html, product) {
   );
 }
 
-/* ===== CONSULTA DE PRODUTOS DA SHOPEE ===== */
+/* ===== SHOPEE ===== */
 
 function getShopeeIds(value) {
   try {
@@ -224,11 +224,9 @@ async function fetchShopeeItem(finalUrl) {
 
     const json = await response.json();
     const item = json?.data?.item || json?.data;
-
     if (!item || typeof item !== "object") return null;
 
     const rawImage = item.image || item.images?.[0] || "";
-
     const image = rawImage
       ? (/^https?:\/\//i.test(rawImage)
           ? rawImage
@@ -259,7 +257,7 @@ async function fetchShopeeItem(finalUrl) {
   }
 }
 
-/* ===== AUTORIZAÇÃO DO MERCADO LIVRE ===== */
+/* ===== OAUTH MERCADO LIVRE ===== */
 
 function redirectUri(request) {
   return new URL("/api/ml-callback", request.url).href;
@@ -354,14 +352,13 @@ async function getMlToken(env) {
   return saveToken(env, fresh);
 }
 
-/* ===== BUSCA AMPLIADA DE CÓDIGOS DO MERCADO LIVRE ===== */
+/* ===== BUSCA DE CÓDIGOS DE ANÚNCIO MLB ===== */
 
 function extractMlItemIds(finalUrl, html = "") {
   const ids = new Set();
 
   function addId(value) {
     if (!value) return;
-
     const matches = String(value).match(/\bMLB-?\d{6,}\b/gi) || [];
 
     for (const match of matches) {
@@ -383,30 +380,25 @@ function extractMlItemIds(finalUrl, html = "") {
       addId(u.searchParams.get("item_id"));
       addId(u.searchParams.get("itemId"));
       addId(u.searchParams.get("wid"));
-      addId(decodeURIComponent(u.href));
+      addId(u.href);
     } catch {}
   }
 
   addFromUrl(finalUrl);
 
   const tags = html.match(/<(?:link|meta|a)\b[^>]*>/gi) || [];
-
   for (const tag of tags) {
     addFromUrl(attr(tag, "href"));
     addFromUrl(attr(tag, "content"));
     addId(attr(tag, "href"));
     addId(attr(tag, "content"));
-
     if (ids.size >= 30) break;
   }
 
   const canonical = html.match(
     /<link\b[^>]*rel=["']canonical["'][^>]*>/i
   );
-
-  if (canonical) {
-    addFromUrl(attr(canonical[0], "href"));
-  }
+  if (canonical) addFromUrl(attr(canonical[0], "href"));
 
   addFromUrl(metaValue(html, ["og:url", "twitter:url"]));
 
@@ -415,7 +407,6 @@ function extractMlItemIds(finalUrl, html = "") {
     .replace(/\\\//g, "/")
     .replace(/&amp;/g, "&");
 
-  // Procura códigos MLB no HTML e nos dados incorporados.
   addId(decodedHtml);
 
   const foundUrls =
@@ -466,7 +457,7 @@ async function fetchMlItem(itemId, env) {
   };
 }
 
-/* ===== RESOLUÇÃO DOS LINKS ===== */
+/* ===== RESOLUÇÃO DE LINKS ===== */
 
 async function getAllowedPage(inputUrl) {
   let current;
@@ -495,7 +486,6 @@ async function getAllowedPage(inputUrl) {
 
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers.get("Location");
-
       if (!location) {
         throw new Error("A loja redirecionou sem informar o destino.");
       }
@@ -514,7 +504,6 @@ async function getAllowedPage(inputUrl) {
     }
 
     const type = response.headers.get("content-type") || "";
-
     if (
       !type.includes("text/html") &&
       !type.includes("application/xhtml+xml")
@@ -528,7 +517,7 @@ async function getAllowedPage(inputUrl) {
   throw new Error("O link teve redirecionamentos demais.");
 }
 
-/* ===== ENDPOINTS DA API ===== */
+/* ===== ENDPOINTS ===== */
 
 export default {
   async fetch(request, env) {
@@ -598,7 +587,6 @@ export default {
       }
 
       let pkceData;
-
       try {
         pkceData = JSON.parse(savedState);
       } catch {
@@ -636,7 +624,6 @@ export default {
 
       if (!response.ok) {
         const detail = await response.text();
-
         return new Response(
           "Erro OAuth HTTP " + response.status + ": " + detail,
           {
@@ -669,7 +656,6 @@ export default {
       }
 
       const raw = url.searchParams.get("url");
-
       if (!raw || raw.length > 3000) {
         return jsonError("Informe um link de produto válido.", 400);
       }
@@ -763,23 +749,11 @@ export default {
             );
           }
 
-          
-if (!ml) {
-  return Response.json(
-    {
-      title:
-        metaValue(html, ["og:title", "twitter:title"]) ||
-        textFromTitle(html),
-      image: absoluteUrl(
-        metaValue(html, ["og:image", "twitter:image"]),
-        finalUrl
-      ),
-      price: "",
-      oldPrice: "",
-      finalUrl,
-      note:
-        "Não foi possível confirmar o preço pela API. Use o link individual do produto ou preencha o preço manualmente."
-    },
-    { headers: { "Cache-Control": "no-store" } }
-  );
-}
+          if (!ml) {
+            return Response.json(
+              {
+                title:
+                  metaValue(html, ["og:title", "twitter:title"]) ||
+                  textFromTitle(html),
+                image: absoluteUrl(
+                  metaValue(html, ["og:image", "twit
