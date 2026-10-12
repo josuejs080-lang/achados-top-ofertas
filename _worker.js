@@ -1,4 +1,3 @@
-
 const ALLOWED_HOSTS = [
   "shopee.com.br",
   "mercadolivre.com.br",
@@ -169,6 +168,99 @@ function extractOldPrice(html, product) {
   );
 }
 
+/* ===== CONSULTA DE PRODUTOS DA SHOPEE ===== */
+
+function getShopeeIds(value) {
+  try {
+    const u = new URL(value);
+    let shopid = u.searchParams.get("shopid") || "";
+    let itemid = u.searchParams.get("itemid") || "";
+
+    const m =
+      u.pathname.match(/\/product\/(\d{5,})\/(\d{5,})/i) ||
+      u.pathname.match(/-i\.(\d{5,})\.(\d{5,})(?:\/|$)/i);
+
+    if (m) {
+      shopid = shopid || m[1];
+      itemid = itemid || m[2];
+    }
+
+    return /^\d+$/.test(shopid) && /^\d+$/.test(itemid)
+      ? { shopid, itemid }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function shopeePrice(value) {
+  if (value == null || value === "") return "";
+
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return "";
+
+  // A Shopee pode representar o preço em unidades de 1/100000.
+  return cleanPrice(n >= 100000 ? n / 100000 : n);
+}
+
+async function fetchShopeeItem(finalUrl) {
+  const ids = getShopeeIds(finalUrl);
+  if (!ids) return null;
+
+  try {
+    const apiUrl = new URL("https://shopee.com.br/api/v4/item/get");
+    apiUrl.searchParams.set("itemid", ids.itemid);
+    apiUrl.searchParams.set("shopid", ids.shopid);
+
+    const response = await fetch(apiUrl.href, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36",
+        "Accept": "application/json",
+        "Referer": "https://shopee.com.br/"
+      }
+    });
+
+    if (!response.ok) return null;
+
+    const json = await response.json();
+    const item = json?.data?.item || json?.data;
+
+    if (!item || typeof item !== "object") return null;
+
+    const rawImage = item.image || item.images?.[0] || "";
+
+    const image = rawImage
+      ? (/^https?:\/\//i.test(rawImage)
+          ? rawImage
+          : "https://down-br.img.susercontent.com/file/" + rawImage)
+      : "";
+
+    const price = shopeePrice(
+      item.price_min ?? item.price ?? item.price_max ?? ""
+    );
+
+    const oldPrice = shopeePrice(
+      item.price_before_discount ??
+      item.price_min_before_discount ??
+      ""
+    );
+
+    if (!item.name && !price && !image) return null;
+
+    return {
+      title: String(item.name || "").trim(),
+      image,
+      price,
+      oldPrice,
+      finalUrl
+    };
+  } catch {
+    return null;
+  }
+}
+
+/* ===== AUTORIZAÇÃO DO MERCADO LIVRE ===== */
+
 function redirectUri(request) {
   return new URL("/api/ml-callback", request.url).href;
 }
@@ -258,13 +350,10 @@ async function getMlToken(env) {
 
   const fresh = await response.json();
   if (!fresh.refresh_token) fresh.refresh_token = token.refresh_token;
+
   return saveToken(env, fresh);
 }
 
-/*
- * Procura IDs de anúncios na URL, nas tags de URL canônica
- * e nos dados embutidos na página.
- */
 function extractMlItemIds(finalUrl, html = "") {
   const ids = new Set();
 
@@ -275,9 +364,7 @@ function extractMlItemIds(finalUrl, html = "") {
       const u = new URL(value, finalUrl);
       const pathMatch = u.pathname.match(/\/MLB-?(\d{6,})(?:\/|$)/i);
 
-      if (pathMatch) {
-        ids.add("MLB" + pathMatch[1]);
-      }
+      if (pathMatch) ids.add("MLB" + pathMatch[1]);
 
       const queryId =
         u.searchParams.get("item_id") ||
@@ -345,6 +432,8 @@ async function fetchMlItem(itemId, env) {
   };
 }
 
+/* ===== RESOLUÇÃO DOS LINKS ===== */
+
 async function getAllowedPage(inputUrl) {
   let current;
 
@@ -365,13 +454,14 @@ async function getAllowedPage(inputUrl) {
       redirect: "manual",
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; AchadosTopPreview/1.0)",
-        Accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+        "Accept": "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
         "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.7"
       }
     });
 
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers.get("Location");
+
       if (!location) {
         throw new Error("A loja redirecionou sem informar o destino.");
       }
@@ -381,6 +471,7 @@ async function getAllowedPage(inputUrl) {
       if (current.protocol !== "https:" || !allowedHost(current.hostname)) {
         throw new Error("O link redirecionou para um domínio não permitido.");
       }
+
       continue;
     }
 
@@ -389,7 +480,11 @@ async function getAllowedPage(inputUrl) {
     }
 
     const type = response.headers.get("content-type") || "";
-    if (!type.includes("text/html") && !type.includes("application/xhtml+xml")) {
+
+    if (
+      !type.includes("text/html") &&
+      !type.includes("application/xhtml+xml")
+    ) {
       throw new Error("A página não retornou HTML legível.");
     }
 
@@ -399,11 +494,12 @@ async function getAllowedPage(inputUrl) {
   throw new Error("O link teve redirecionamentos demais.");
 }
 
+/* ===== ENDPOINTS DA API ===== */
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // Inicia a autorização OAuth com PKCE.
     if (url.pathname === "/api/ml-auth") {
       if (!env.ML_CLIENT_ID || !env.ML_CLIENT_SECRET || !env.ML_TOKENS) {
         return jsonError(
@@ -442,7 +538,6 @@ export default {
       return Response.redirect(authUrl.href, 302);
     }
 
-    // Recebe o retorno OAuth e salva os tokens.
     if (url.pathname === "/api/ml-callback") {
       if (url.searchParams.get("error")) {
         return new Response(
@@ -534,7 +629,6 @@ export default {
       );
     }
 
-    // Consulta os metadados do produto.
     if (url.pathname === "/api/product-meta") {
       if (request.method !== "GET") {
         return jsonError("Método não permitido.", 405);
@@ -551,6 +645,30 @@ export default {
         const html = (await response.text()).slice(0, 3000000);
         const product = parseJsonLd(html);
         const originalHost = new URL(raw).hostname.toLowerCase();
+
+        const isShopee =
+          originalHost === "shopee.com.br" ||
+          originalHost.endsWith(".shopee.com.br");
+
+        if (isShopee) {
+          const shopee = await fetchShopeeItem(finalUrl);
+
+          if (shopee && shopee.title) {
+            return Response.json(
+              {
+                title: shopee.title.slice(0, 240),
+                image: absoluteUrl(shopee.image, finalUrl),
+                price: shopee.price,
+                oldPrice: shopee.oldPrice,
+                finalUrl,
+                note: shopee.price
+                  ? "Dados consultados na Shopee; confira o preço antes de divulgar."
+                  : "Nome encontrado, mas a Shopee não retornou preço legível."
+              },
+              { headers: { "Cache-Control": "no-store" } }
+            );
+          }
+        }
 
         const isMercadoLivre =
           originalHost === "meli.la" ||
@@ -600,7 +718,7 @@ export default {
                 break;
               }
             } catch {
-              // Ignora IDs que não sejam anúncios válidos e tenta o próximo.
+              // Tenta o próximo ID encontrado.
             }
           }
 
@@ -635,60 +753,4 @@ export default {
             {
               title: ml.title,
               image: absoluteUrl(ml.image, ml.finalUrl || finalUrl),
-              price: ml.price,
-              oldPrice: ml.oldPrice,
-              finalUrl: ml.finalUrl || finalUrl,
-              note: "Preço obtido da API do Mercado Livre."
-            },
-            { headers: { "Cache-Control": "no-store" } }
-          );
-        }
-
-        const title =
-          metaValue(html, ["og:title", "twitter:title", "product:title"]) ||
-          product?.name ||
-          textFromTitle(html);
-
-        const image = absoluteUrl(
-          metaValue(html, ["og:image", "twitter:image"]) ||
-          (Array.isArray(product?.image)
-            ? product.image[0]
-            : product?.image) ||
-          "",
-          finalUrl
-        );
-
-        const price = extractPrice(html, product);
-        const oldPrice = extractOldPrice(html, product);
-
-        return Response.json(
-          {
-            title: String(title || "")
-              .replace(/\s+/g, " ")
-              .trim()
-              .slice(0, 240),
-            image,
-            price,
-            oldPrice,
-            finalUrl,
-            note: price
-              ? "Preço encontrado nos metadados da página; confira se corresponde à oferta."
-              : "A loja não disponibilizou um preço legível nesta página."
-          },
-          { headers: { "Cache-Control": "no-store" } }
-        );
-      } catch (error) {
-        return Response.json(
-          {
-            error: error?.message ||
-              "Não foi possível consultar o produto."
-          },
-          { status: 422 }
-        );
-      }
-    }
-
-    return env.ASSETS.fetch(request);
-  }
-};
-    
+              price:
