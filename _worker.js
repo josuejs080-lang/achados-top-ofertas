@@ -144,7 +144,7 @@ function extractPrice(html, product) {
     /"sale_price"\s*:\s*"?([\d.,]+)"?/i,
     /"current_price"\s*:\s*"?([\d.,]+)"?/i,
     /"price"\s*:\s*\{\s*"amount"\s*:\s*"?([\d.,]+)"?/i,
-    /"price"\s*:\s*"?(\d+(?:[.,]\d{1,2})?)"?/i,
+    /"price"\s*:\s*"?(\\d+(?:[.,]\d{1,2})?)"?/i,
     /itemprop=["']price["'][^>]*content=["']([\d.,]+)["']/i,
     /content=["']([\d.,]+)["'][^>]*itemprop=["']price["']/i
   ];
@@ -261,34 +261,51 @@ async function getMlToken(env) {
   return saveToken(env, fresh);
 }
 
-function extractMlItemId(finalUrl, html = "") {
-  // IDs retirados de URLs de anúncio, nunca de produtos relacionados.
-  try {
-    const u = new URL(finalUrl);
-    const match = u.pathname.match(/\/MLB-?(\d{6,})(?:\/|$)/i);
-    if (match) return "MLB" + match[1];
+/*
+ * Procura IDs de anúncios na URL, nas tags de URL canônica
+ * e nos dados embutidos na página.
+ */
+function extractMlItemIds(finalUrl, html = "") {
+  const ids = new Set();
 
-    const queryId = u.searchParams.get("item_id");
-    if (queryId && /^MLB-?\d{6,}$/i.test(queryId)) {
-      return queryId.replace("-", "").toUpperCase();
-    }
-  } catch {}
-
-  const canonical = html.match(/<link\b[^>]*rel=["']canonical["'][^>]*>/i);
-  const canonicalUrl = canonical ? attr(canonical[0], "href") : "";
-  const ogUrl = metaValue(html, ["og:url"]);
-
-  for (const candidate of [canonicalUrl, ogUrl]) {
-    if (!candidate) continue;
+  function addFromUrl(value) {
+    if (!value) return;
 
     try {
-      const u = new URL(candidate);
-      const match = u.pathname.match(/\/MLB-?(\d{6,})(?:\/|$)/i);
-      if (match) return "MLB" + match[1];
+      const u = new URL(value, finalUrl);
+      const pathMatch = u.pathname.match(/\/MLB-?(\d{6,})(?:\/|$)/i);
+
+      if (pathMatch) {
+        ids.add("MLB" + pathMatch[1]);
+      }
+
+      const queryId =
+        u.searchParams.get("item_id") ||
+        u.searchParams.get("itemId");
+
+      if (queryId && /^MLB-?\d{6,}$/i.test(queryId)) {
+        ids.add(queryId.replace("-", "").toUpperCase());
+      }
     } catch {}
   }
 
-  return "";
+  addFromUrl(finalUrl);
+
+  const canonical = html.match(
+    /<link\b[^>]*rel=["']canonical["'][^>]*>/i
+  );
+
+  addFromUrl(canonical ? attr(canonical[0], "href") : "");
+  addFromUrl(metaValue(html, ["og:url", "twitter:url"]));
+
+  const embedded = html.match(/\bMLB-?\d{6,}\b/gi) || [];
+
+  for (const value of embedded) {
+    ids.add(value.replace("-", "").toUpperCase());
+    if (ids.size >= 12) break;
+  }
+
+  return [...ids].slice(0, 12);
 }
 
 async function fetchMlItem(itemId, env) {
@@ -355,7 +372,9 @@ async function getAllowedPage(inputUrl) {
 
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers.get("Location");
-      if (!location) throw new Error("A loja redirecionou sem informar o destino.");
+      if (!location) {
+        throw new Error("A loja redirecionou sem informar o destino.");
+      }
 
       current = new URL(location, current);
 
@@ -384,7 +403,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // Inicia o OAuth com PKCE.
+    // Inicia a autorização OAuth com PKCE.
     if (url.pathname === "/api/ml-auth") {
       if (!env.ML_CLIENT_ID || !env.ML_CLIENT_SECRET || !env.ML_TOKENS) {
         return jsonError(
@@ -395,7 +414,11 @@ export default {
 
       const bytes = new Uint8Array(24);
       crypto.getRandomValues(bytes);
-      const state = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+
+      const state = Array.from(
+        bytes,
+        b => b.toString(16).padStart(2, "0")
+      ).join("");
 
       const pkce = await createPkce();
 
@@ -405,7 +428,10 @@ export default {
         { expirationTtl: 600 }
       );
 
-      const authUrl = new URL("https://auth.mercadolivre.com.br/authorization");
+      const authUrl = new URL(
+        "https://auth.mercadolivre.com.br/authorization"
+      );
+
       authUrl.searchParams.set("response_type", "code");
       authUrl.searchParams.set("client_id", env.ML_CLIENT_ID);
       authUrl.searchParams.set("redirect_uri", redirectUri(request));
@@ -416,7 +442,7 @@ export default {
       return Response.redirect(authUrl.href, 302);
     }
 
-    // Recebe o callback e troca o código pelo token.
+    // Recebe o retorno OAuth e salva os tokens.
     if (url.pathname === "/api/ml-callback") {
       if (url.searchParams.get("error")) {
         return new Response(
@@ -443,6 +469,7 @@ export default {
       }
 
       let pkceData;
+
       try {
         pkceData = JSON.parse(savedState);
       } catch {
@@ -450,7 +477,10 @@ export default {
       }
 
       if (!pkceData.verifier) {
-        return jsonError("Code verifier ausente. Inicie uma nova autorização.", 400);
+        return jsonError(
+          "Code verifier ausente. Inicie uma nova autorização.",
+          400
+        );
       }
 
       await env.ML_TOKENS.delete(stateKey);
@@ -464,14 +494,20 @@ export default {
         code_verifier: pkceData.verifier
       });
 
-      const response = await fetch("https://api.mercadolibre.com/oauth/token", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: form
-      });
+      const response = await fetch(
+        "https://api.mercadolibre.com/oauth/token",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          body: form
+        }
+      );
 
       if (!response.ok) {
         const detail = await response.text();
+
         return new Response(
           "Erro OAuth HTTP " + response.status + ": " + detail,
           {
@@ -498,13 +534,14 @@ export default {
       );
     }
 
-    // Consulta dados de produto.
+    // Consulta os metadados do produto.
     if (url.pathname === "/api/product-meta") {
       if (request.method !== "GET") {
         return jsonError("Método não permitido.", 405);
       }
 
       const raw = url.searchParams.get("url");
+
       if (!raw || raw.length > 3000) {
         return jsonError("Informe um link de produto válido.", 400);
       }
@@ -524,9 +561,9 @@ export default {
           originalHost.endsWith(".mercadolibre.com");
 
         if (isMercadoLivre) {
-          const itemId = extractMlItemId(finalUrl, html);
+          const itemIds = extractMlItemIds(finalUrl, html);
 
-          if (!itemId) {
+          if (!itemIds.length) {
             return Response.json(
               {
                 title:
@@ -540,18 +577,57 @@ export default {
                 oldPrice: "",
                 finalUrl,
                 note:
-                  "Não foi possível identificar um anúncio individual. Copie o link direto do produto, não o link de perfil ou uma página intermediária."
+                  "O link não expôs o código do anúncio. Use o link individual do produto, não o link do perfil ou uma página de recomendações."
               },
               { headers: { "Cache-Control": "no-store" } }
             );
           }
 
-          const ml = await fetchMlItem(itemId, env);
+          let ml = null;
+          let needsAuthorization = false;
 
-          if (ml.needsAuthorization) {
+          for (const itemId of itemIds) {
+            try {
+              const candidate = await fetchMlItem(itemId, env);
+
+              if (candidate.needsAuthorization) {
+                needsAuthorization = true;
+                break;
+              }
+
+              if (candidate.title && candidate.price) {
+                ml = candidate;
+                break;
+              }
+            } catch {
+              // Ignora IDs que não sejam anúncios válidos e tenta o próximo.
+            }
+          }
+
+          if (needsAuthorization) {
             return jsonError(
               "Conecte sua conta do Mercado Livre em /api/ml-auth.",
               401
+            );
+          }
+
+          if (!ml) {
+            return Response.json(
+              {
+                title:
+                  metaValue(html, ["og:title", "twitter:title"]) ||
+                  textFromTitle(html),
+                image: absoluteUrl(
+                  metaValue(html, ["og:image", "twitter:image"]),
+                  finalUrl
+                ),
+                price: "",
+                oldPrice: "",
+                finalUrl,
+                note:
+                  "A página não forneceu um anúncio com preço confirmado pela API. Use o link individual do produto."
+              },
+              { headers: { "Cache-Control": "no-store" } }
             );
           }
 
@@ -562,9 +638,7 @@ export default {
               price: ml.price,
               oldPrice: ml.oldPrice,
               finalUrl: ml.finalUrl || finalUrl,
-              note: ml.price
-                ? "Preço obtido da API do Mercado Livre."
-                : "A API não forneceu preço para este item."
+              note: "Preço obtido da API do Mercado Livre."
             },
             { headers: { "Cache-Control": "no-store" } }
           );
@@ -577,7 +651,9 @@ export default {
 
         const image = absoluteUrl(
           metaValue(html, ["og:image", "twitter:image"]) ||
-          (Array.isArray(product?.image) ? product.image[0] : product?.image) ||
+          (Array.isArray(product?.image)
+            ? product.image[0]
+            : product?.image) ||
           "",
           finalUrl
         );
@@ -587,7 +663,10 @@ export default {
 
         return Response.json(
           {
-            title: String(title || "").replace(/\s+/g, " ").trim().slice(0, 240),
+            title: String(title || "")
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 240),
             image,
             price,
             oldPrice,
@@ -601,7 +680,8 @@ export default {
       } catch (error) {
         return Response.json(
           {
-            error: error?.message || "Não foi possível consultar o produto."
+            error: error?.message ||
+              "Não foi possível consultar o produto."
           },
           { status: 422 }
         );
