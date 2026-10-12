@@ -397,8 +397,6 @@ function extractMlItemIds(finalUrl, html = "") {
 }
 
 async function fetchMlItem(itemId, env) {
-
-async function fetchMlItem(itemId, env) {
   const token = await getMlToken(env);
   if (!token) return { needsAuthorization: true };
 
