@@ -53,7 +53,7 @@ button{border:0;border-radius:11px;padding:13px 15px;font:inherit;font-weight:80
 </main>
 <div class="footer">Achados Top · Preços e disponibilidade podem mudar. Verifique as condições antes de compartilhar.</div>
 <script>
-const API='https://achados-top-api.josuejs080.workers.dev/api/product-meta';
+const API='/api/product-meta';
 const $=id=>document.getElementById(id);
 function validLink(v){try{const u=new URL(v);return ['http:','https:'].includes(u.protocol)&&/(shopee|mercadolivre|mercadolibre|meli\.la)/i.test(u.hostname)?u.href:''}catch{return ''}}
 function storeName(v){return /shopee/i.test(v)?'Shopee':/mercadolivre|mercadolibre|meli\.la/i.test(v)?'Mercado Livre':'Loja'}
