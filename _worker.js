@@ -753,5 +753,62 @@ export default {
           return Response.json(
             {
               title: ml.title,
+              
               image: absoluteUrl(ml.image, ml.finalUrl || finalUrl),
+              price: ml.price,
+              oldPrice: ml.oldPrice,
+              finalUrl: ml.finalUrl || finalUrl,
+              note: "Preço obtido da API do Mercado Livre."
+            },
+            { headers: { "Cache-Control": "no-store" } }
+          );
+        }
+
+        const title =
+          metaValue(html, ["og:title", "twitter:title", "product:title"]) ||
+          product?.name ||
+          textFromTitle(html);
+
+        const image = absoluteUrl(
+          metaValue(html, ["og:image", "twitter:image"]) ||
+          (Array.isArray(product?.image)
+            ? product.image[0]
+            : product?.image) ||
+          "",
+          finalUrl
+        );
+
+        const price = extractPrice(html, product);
+        const oldPrice = extractOldPrice(html, product);
+
+        return Response.json(
+          {
+            title: String(title || "")
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 240),
+            image,
+            price,
+            oldPrice,
+            finalUrl,
+            note: price
+              ? "Preço encontrado nos metadados da página; confira se corresponde à oferta."
+              : "A loja não disponibilizou um preço legível nesta página."
+          },
+          { headers: { "Cache-Control": "no-store" } }
+        );
+      } catch (error) {
+        return Response.json(
+          {
+            error: error?.message ||
+              "Não foi possível consultar o produto."
+          },
+          { status: 422 }
+        );
+      }
+    }
+
+    return env.ASSETS.fetch(request);
+  }
+};
          
