@@ -554,4 +554,78 @@ export default {
 
           let ml = null;
           let needsAuthorization = false;
-          for (const
+          
+for (const itemId of itemIds) {
+  try {
+    const candidate = await fetchMlItem(itemId, env);
+    if (candidate?.needsAuthorization) {
+      needsAuthorization = true;
+      break;
+    }
+    if (candidate?.title && candidate?.price) {
+      ml = candidate;
+      break;
+    }
+  } catch {}
+}
+
+if (needsAuthorization) {
+  return jsonError("Conecte sua conta do Mercado Livre em /api/ml-auth.", 401);
+}
+
+if (!ml) {
+  return Response.json({
+    title: pageTitle,
+    image: absoluteUrl(metaValue(html, ["og:image", "twitter:image"]), finalUrl),
+    price: "",
+    oldPrice: "",
+    finalUrl: raw,
+    note: "A API não confirmou um preço para o anúncio identificado. O link de afiliado foi preservado."
+  }, { headers: { "Cache-Control": "no-store" } });
+}
+
+return Response.json({
+  title: ml.title,
+  image: absoluteUrl(ml.image, ml.finalUrl || finalUrl),
+  price: ml.price,
+  oldPrice: ml.oldPrice,
+  finalUrl: raw,
+  note: "Preço consultado na API do Mercado Livre; link de afiliado preservado."
+}, { headers: { "Cache-Control": "no-store" } });
+}
+
+const title =
+  metaValue(html, ["og:title", "twitter:title", "product:title"]) ||
+  product?.name ||
+  textFromTitle(html);
+
+const image = absoluteUrl(
+  metaValue(html, ["og:image", "twitter:image"]) ||
+  (Array.isArray(product?.image) ? product.image[0] : product?.image) || "",
+  finalUrl
+);
+
+const price = extractPrice(html, product);
+const oldPrice = extractOldPrice(html, product);
+
+return Response.json({
+  title: String(title || "").replace(/\s+/g, " ").trim().slice(0, 240),
+  image,
+  price,
+  oldPrice,
+  finalUrl: raw,
+  note: price
+    ? "Preço encontrado nos metadados da página; confira se corresponde à oferta."
+    : "A loja não disponibilizou um preço legível nesta página."
+}, { headers: { "Cache-Control": "no-store" } });
+
+} catch (error) {
+  return Response.json({
+    error: error?.message || "Não foi possível consultar o produto."
+  }, { status: 422 });
+}
+}
+
+return env.ASSETS.fetch(request);
+}
+};
