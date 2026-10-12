@@ -169,7 +169,7 @@ function extractOldPrice(html, product) {
   );
 }
 
-/* ===== SHOPEE ===== */
+/* ===== CONSULTA DE PRODUTOS DA SHOPEE ===== */
 
 function getShopeeIds(value) {
   try {
@@ -200,6 +200,7 @@ function shopeePrice(value) {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return "";
 
+  // A Shopee pode representar o preço em unidades de 1/100000.
   return cleanPrice(n >= 100000 ? n / 100000 : n);
 }
 
@@ -224,9 +225,11 @@ async function fetchShopeeItem(finalUrl) {
 
     const json = await response.json();
     const item = json?.data?.item || json?.data;
+
     if (!item || typeof item !== "object") return null;
 
     const rawImage = item.image || item.images?.[0] || "";
+
     const image = rawImage
       ? (/^https?:\/\//i.test(rawImage)
           ? rawImage
@@ -257,7 +260,7 @@ async function fetchShopeeItem(finalUrl) {
   }
 }
 
-/* ===== OAUTH MERCADO LIVRE ===== */
+/* ===== AUTORIZAÇÃO DO MERCADO LIVRE ===== */
 
 function redirectUri(request) {
   return new URL("/api/ml-callback", request.url).href;
@@ -352,72 +355,45 @@ async function getMlToken(env) {
   return saveToken(env, fresh);
 }
 
-/* ===== BUSCA DE CÓDIGOS DE ANÚNCIO MLB ===== */
-
 function extractMlItemIds(finalUrl, html = "") {
   const ids = new Set();
-
-  function addId(value) {
-    if (!value) return;
-    const matches = String(value).match(/\bMLB-?\d{6,}\b/gi) || [];
-
-    for (const match of matches) {
-      ids.add(match.replace("-", "").toUpperCase());
-      if (ids.size >= 30) return;
-    }
-  }
 
   function addFromUrl(value) {
     if (!value) return;
 
     try {
       const u = new URL(value, finalUrl);
-      if (!allowedHost(u.hostname)) return;
-
       const pathMatch = u.pathname.match(/\/MLB-?(\d{6,})(?:\/|$)/i);
-      if (pathMatch) addId("MLB" + pathMatch[1]);
 
-      addId(u.searchParams.get("item_id"));
-      addId(u.searchParams.get("itemId"));
-      addId(u.searchParams.get("wid"));
-      addId(u.href);
+      if (pathMatch) ids.add("MLB" + pathMatch[1]);
+
+      const queryId =
+        u.searchParams.get("item_id") ||
+        u.searchParams.get("itemId");
+
+      if (queryId && /^MLB-?\d{6,}$/i.test(queryId)) {
+        ids.add(queryId.replace("-", "").toUpperCase());
+      }
     } catch {}
   }
 
   addFromUrl(finalUrl);
 
-  const tags = html.match(/<(?:link|meta|a)\b[^>]*>/gi) || [];
-  for (const tag of tags) {
-    addFromUrl(attr(tag, "href"));
-    addFromUrl(attr(tag, "content"));
-    addId(attr(tag, "href"));
-    addId(attr(tag, "content"));
-    if (ids.size >= 30) break;
-  }
-
   const canonical = html.match(
     /<link\b[^>]*rel=["']canonical["'][^>]*>/i
   );
-  if (canonical) addFromUrl(attr(canonical[0], "href"));
 
+  addFromUrl(canonical ? attr(canonical[0], "href") : "");
   addFromUrl(metaValue(html, ["og:url", "twitter:url"]));
 
-  const decodedHtml = html
-    .replace(/\\u0026/gi, "&")
-    .replace(/\\\//g, "/")
-    .replace(/&amp;/g, "&");
+  const embedded = html.match(/\bMLB-?\d{6,}\b/gi) || [];
 
-  addId(decodedHtml);
-
-  const foundUrls =
-    decodedHtml.match(/https?:\/\/[^"'<>\\\s]+/gi) || [];
-
-  for (const value of foundUrls) {
-    addFromUrl(value);
-    if (ids.size >= 30) break;
+  for (const value of embedded) {
+    ids.add(value.replace("-", "").toUpperCase());
+    if (ids.size >= 12) break;
   }
 
-  return [...ids].slice(0, 30);
+  return [...ids].slice(0, 12);
 }
 
 async function fetchMlItem(itemId, env) {
@@ -457,7 +433,7 @@ async function fetchMlItem(itemId, env) {
   };
 }
 
-/* ===== RESOLUÇÃO DE LINKS ===== */
+/* ===== RESOLUÇÃO DOS LINKS ===== */
 
 async function getAllowedPage(inputUrl) {
   let current;
@@ -486,6 +462,7 @@ async function getAllowedPage(inputUrl) {
 
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers.get("Location");
+
       if (!location) {
         throw new Error("A loja redirecionou sem informar o destino.");
       }
@@ -504,6 +481,7 @@ async function getAllowedPage(inputUrl) {
     }
 
     const type = response.headers.get("content-type") || "";
+
     if (
       !type.includes("text/html") &&
       !type.includes("application/xhtml+xml")
@@ -517,7 +495,7 @@ async function getAllowedPage(inputUrl) {
   throw new Error("O link teve redirecionamentos demais.");
 }
 
-/* ===== ENDPOINTS ===== */
+/* ===== ENDPOINTS DA API ===== */
 
 export default {
   async fetch(request, env) {
@@ -587,6 +565,7 @@ export default {
       }
 
       let pkceData;
+
       try {
         pkceData = JSON.parse(savedState);
       } catch {
@@ -624,6 +603,7 @@ export default {
 
       if (!response.ok) {
         const detail = await response.text();
+
         return new Response(
           "Erro OAuth HTTP " + response.status + ": " + detail,
           {
@@ -656,6 +636,7 @@ export default {
       }
 
       const raw = url.searchParams.get("url");
+
       if (!raw || raw.length > 3000) {
         return jsonError("Informe um link de produto válido.", 400);
       }
@@ -715,7 +696,7 @@ export default {
                 oldPrice: "",
                 finalUrl,
                 note:
-                  "O link social não expôs um código MLB identificável. A busca ampliada não encontrou um anúncio individual para consultar."
+                  "O link não expôs o código do anúncio. Use o link individual do produto, não o link do perfil ou uma página de recomendações."
               },
               { headers: { "Cache-Control": "no-store" } }
             );
@@ -738,7 +719,7 @@ export default {
                 break;
               }
             } catch {
-              // Tenta o próximo código encontrado.
+              // Tenta o próximo ID encontrado.
             }
           }
 
@@ -756,4 +737,21 @@ export default {
                   metaValue(html, ["og:title", "twitter:title"]) ||
                   textFromTitle(html),
                 image: absoluteUrl(
-                  metaValue(html, ["og:image", "twit
+                  metaValue(html, ["og:image", "twitter:image"]),
+                  finalUrl
+                ),
+                price: "",
+                oldPrice: "",
+                finalUrl,
+                note:
+                  "A página não forneceu um anúncio com preço confirmado pela API. Use o link individual do produto."
+              },
+              { headers: { "Cache-Control": "no-store" } }
+            );
+          }
+
+          return Response.json(
+            {
+              title: ml.title,
+              image: absoluteUrl(ml.image, ml.finalUrl || finalUrl),
+         
