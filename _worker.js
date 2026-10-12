@@ -8,7 +8,7 @@ const ALLOWED_HOSTS = [
   "tiktokshop.com"
 ];
 
-função allowedHost(hostname) {
+function allowedHost(hostname) {
   const h = hostname.toLowerCase();
   retornar ALLOWED_HOSTS.some(root => h === root || h.endsWith("." + root));
 }
