@@ -1,3 +1,4 @@
+
 const ALLOWED_HOSTS = [
   "shopee.com.br",
   "mercadolivre.com.br",
@@ -9,9 +10,7 @@ const ALLOWED_HOSTS = [
 
 function allowedHost(hostname) {
   const h = hostname.toLowerCase();
-  return ALLOWED_HOSTS.some(
-    root => h === root || h.endsWith("." + root)
-  );
+  return ALLOWED_HOSTS.some(root => h === root || h.endsWith("." + root));
 }
 
 function decodeEntities(s = "") {
@@ -21,26 +20,18 @@ function decodeEntities(s = "") {
     .replace(/&#39;|&apos;/g, "'")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
-    .replace(/&#(\d+);/g, (_, n) =>
-      String.fromCharCode(Number(n))
-    )
-    .replace(/&#x([0-9a-f]+);/gi, (_, n) =>
-      String.fromCharCode(parseInt(n, 16))
-    );
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)));
 }
 
 function attr(tag, name) {
-  const re = new RegExp(
-    `${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`,
-    "i"
-  );
+  const re = new RegExp(`${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, "i");
   const m = tag.match(re);
   return m ? decodeEntities(m[1] ?? m[2] ?? m[3] ?? "") : "";
 }
 
 function metaValue(html, keys) {
   const tags = html.match(/<meta\b[^>]*>/gi) || [];
-
   for (const key of keys) {
     for (const tag of tags) {
       const name = (
@@ -55,15 +46,13 @@ function metaValue(html, keys) {
       }
     }
   }
-
   return "";
 }
 
 function parseJsonLd(html) {
-  const scripts =
-    html.match(
-      /<script\b[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi
-    ) || [];
+  const scripts = html.match(
+    /<script\b[^>]*type=["']application\/ld\+json["'][^>]*>[\s\S]*?<\/script>/gi
+  ) || [];
 
   const products = [];
 
@@ -77,11 +66,7 @@ function parseJsonLd(html) {
 
       function visit(obj) {
         if (!obj || typeof obj !== "object") return;
-
-        if (Array.isArray(obj)) {
-          obj.forEach(visit);
-          return;
-        }
+        if (Array.isArray(obj)) return obj.forEach(visit);
 
         const types = [].concat(obj["@type"] || []);
         if (types.some(t => String(t).toLowerCase() === "product")) {
@@ -101,11 +86,8 @@ function parseJsonLd(html) {
 
 function textFromTitle(html) {
   const m = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
-
   return m
-    ? decodeEntities(
-        m[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim()
-      )
+    ? decodeEntities(m[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim())
     : "";
 }
 
@@ -116,10 +98,9 @@ function cleanPrice(value) {
   if (!s) return "";
 
   if (s.includes(",") && s.includes(".")) {
-    s =
-      s.lastIndexOf(",") > s.lastIndexOf(".")
-        ? s.replace(/\./g, "").replace(",", ".")
-        : s.replace(/,/g, "");
+    s = s.lastIndexOf(",") > s.lastIndexOf(".")
+      ? s.replace(/\./g, "").replace(",", ".")
+      : s.replace(/,/g, "");
   } else if (s.includes(",")) {
     s = s.replace(",", ".");
   }
@@ -148,19 +129,15 @@ function getOffer(product) {
 
 function extractPrice(html, product) {
   const offer = getOffer(product);
-
   let price = cleanPrice(offer.price ?? offer.lowPrice ?? "");
   if (price) return price;
 
-  price = cleanPrice(
-    metaValue(html, [
-      "product:price:amount",
-      "og:price:amount",
-      "product:sale_price:amount",
-      "product:price"
-    ])
-  );
-
+  price = cleanPrice(metaValue(html, [
+    "product:price:amount",
+    "og:price:amount",
+    "product:sale_price:amount",
+    "product:price"
+  ]));
   if (price) return price;
 
   const patterns = [
@@ -182,7 +159,6 @@ function extractPrice(html, product) {
 
 function extractOldPrice(html, product) {
   const offer = getOffer(product);
-
   return cleanPrice(
     offer.highPrice ??
     metaValue(html, [
@@ -191,46 +167,6 @@ function extractOldPrice(html, product) {
       "product:retail_price:amount"
     ])
   );
-}
-
-function extractMlItemId(url, html = "") {
-  // Procura o identificador na URL e no HTML da própria página.
-  // Não usa IDs encontrados em links de produtos relacionados.
-  const candidates = [url];
-
-  try {
-    const u = new URL(url);
-    const pathMatch = u.pathname.match(/\/MLB-?(\d{6,})(?:\/|$)/i);
-    if (pathMatch) return "MLB" + pathMatch[1];
-
-    const queryId = u.searchParams.get("item_id");
-    if (queryId && /^MLB-?\d{6,}$/i.test(queryId)) {
-      return queryId.replace("-", "").toUpperCase();
-    }
-  } catch {}
-
-  // Só aceita IDs presentes em URLs canônicas ou metadados de item.
-  const canonical = html.match(
-    /<link\b[^>]*rel=["']canonical["'][^>]*>/i
-  );
-
-  if (canonical) {
-    const href = attr(canonical[0], "href");
-    if (href) candidates.push(href);
-  }
-
-  const ogUrl = metaValue(html, ["og:url"]);
-  if (ogUrl) candidates.push(ogUrl);
-
-  for (const candidate of candidates) {
-    try {
-      const u = new URL(candidate);
-      const match = u.pathname.match(/\/MLB-?(\d{6,})(?:\/|$)/i);
-      if (match) return "MLB" + match[1];
-    } catch {}
-  }
-
-  return "";
 }
 
 function redirectUri(request) {
@@ -244,10 +180,34 @@ function jsonError(message, status = 400) {
   );
 }
 
-async function saveToken(env, token) {
-  token.expires_at =
-    Date.now() + Number(token.expires_in || 0) * 1000;
+function base64url(bytes) {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
 
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+async function createPkce() {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+
+  const verifier = base64url(bytes);
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(verifier)
+  );
+
+  return {
+    verifier,
+    challenge: base64url(new Uint8Array(digest))
+  };
+}
+
+async function saveToken(env, token) {
+  token.expires_at = Date.now() + Number(token.expires_in || 0) * 1000;
   await env.ML_TOKENS.put("oauth", JSON.stringify(token));
   return token;
 }
@@ -284,40 +244,56 @@ async function getMlToken(env) {
     refresh_token: token.refresh_token
   });
 
-  const response = await fetch(
-    "https://api.mercadolibre.com/oauth/token",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      body: form
-    }
-  );
+  const response = await fetch("https://api.mercadolibre.com/oauth/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: form
+  });
 
   if (!response.ok) {
-    // Não apaga o token antigo; a reconexão pode ser necessária.
     throw new Error(
-      "A autorização do Mercado Livre expirou ou não pôde ser renovada. Acesse /api/ml-auth para reconectar."
+      "A autorização expirou ou não pôde ser renovada. Acesse /api/ml-auth para reconectar."
     );
   }
 
   const fresh = await response.json();
-
-  // O Mercado Livre pode fornecer um refresh token novo.
   if (!fresh.refresh_token) fresh.refresh_token = token.refresh_token;
-
   return saveToken(env, fresh);
+}
+
+function extractMlItemId(finalUrl, html = "") {
+  // IDs retirados de URLs de anúncio, nunca de produtos relacionados.
+  try {
+    const u = new URL(finalUrl);
+    const match = u.pathname.match(/\/MLB-?(\d{6,})(?:\/|$)/i);
+    if (match) return "MLB" + match[1];
+
+    const queryId = u.searchParams.get("item_id");
+    if (queryId && /^MLB-?\d{6,}$/i.test(queryId)) {
+      return queryId.replace("-", "").toUpperCase();
+    }
+  } catch {}
+
+  const canonical = html.match(/<link\b[^>]*rel=["']canonical["'][^>]*>/i);
+  const canonicalUrl = canonical ? attr(canonical[0], "href") : "";
+  const ogUrl = metaValue(html, ["og:url"]);
+
+  for (const candidate of [canonicalUrl, ogUrl]) {
+    if (!candidate) continue;
+
+    try {
+      const u = new URL(candidate);
+      const match = u.pathname.match(/\/MLB-?(\d{6,})(?:\/|$)/i);
+      if (match) return "MLB" + match[1];
+    } catch {}
+  }
+
+  return "";
 }
 
 async function fetchMlItem(itemId, env) {
   const token = await getMlToken(env);
-
-  if (!token) {
-    return {
-      needsAuthorization: true
-    };
-  }
+  if (!token) return { needsAuthorization: true };
 
   const response = await fetch(
     "https://api.mercadolibre.com/items/" + encodeURIComponent(itemId),
@@ -330,10 +306,10 @@ async function fetchMlItem(itemId, env) {
   );
 
   if (!response.ok) {
+    const detail = await response.text();
     throw new Error(
       "A API do Mercado Livre não retornou o item (HTTP " +
-      response.status +
-      "). Verifique a autorização e o link do produto."
+      response.status + "): " + detail.slice(0, 300)
     );
   }
 
@@ -348,8 +324,7 @@ async function fetchMlItem(itemId, env) {
       "",
     price: cleanPrice(item.price),
     oldPrice: cleanPrice(item.original_price),
-    finalUrl: item.permalink || "",
-    source: "mercadolivre_api"
+    finalUrl: item.permalink || ""
   };
 }
 
@@ -372,32 +347,21 @@ async function getAllowedPage(inputUrl) {
     const response = await fetch(current.href, {
       redirect: "manual",
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (compatible; AchadosTopPreview/1.0)",
-        Accept:
-          "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+        "User-Agent": "Mozilla/5.0 (compatible; AchadosTopPreview/1.0)",
+        Accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
         "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.7"
       }
     });
 
     if ([301, 302, 303, 307, 308].includes(response.status)) {
       const location = response.headers.get("Location");
-
-      if (!location) {
-        throw new Error("A loja redirecionou sem informar o destino.");
-      }
+      if (!location) throw new Error("A loja redirecionou sem informar o destino.");
 
       current = new URL(location, current);
 
-      if (
-        current.protocol !== "https:" ||
-        !allowedHost(current.hostname)
-      ) {
-        throw new Error(
-          "O link redirecionou para um domínio não permitido."
-        );
+      if (current.protocol !== "https:" || !allowedHost(current.hostname)) {
+        throw new Error("O link redirecionou para um domínio não permitido.");
       }
-
       continue;
     }
 
@@ -406,11 +370,7 @@ async function getAllowedPage(inputUrl) {
     }
 
     const type = response.headers.get("content-type") || "";
-
-    if (
-      !type.includes("text/html") &&
-      !type.includes("application/xhtml+xml")
-    ) {
+    if (!type.includes("text/html") && !type.includes("application/xhtml+xml")) {
       throw new Error("A página não retornou HTML legível.");
     }
 
@@ -424,13 +384,9 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // Inicia a autorização da conta do Mercado Livre.
+    // Inicia o OAuth com PKCE.
     if (url.pathname === "/api/ml-auth") {
-      if (
-        !env.ML_CLIENT_ID ||
-        !env.ML_CLIENT_SECRET ||
-        !env.ML_TOKENS
-      ) {
+      if (!env.ML_CLIENT_ID || !env.ML_CLIENT_SECRET || !env.ML_TOKENS) {
         return jsonError(
           "Configure ML_CLIENT_ID, ML_CLIENT_SECRET e o KV ML_TOKENS.",
           500
@@ -439,28 +395,28 @@ export default {
 
       const bytes = new Uint8Array(24);
       crypto.getRandomValues(bytes);
+      const state = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
 
-      const state = Array.from(bytes, b =>
-        b.toString(16).padStart(2, "0")
-      ).join("");
+      const pkce = await createPkce();
 
-      await env.ML_TOKENS.put("state:" + state, "pending", {
-        expirationTtl: 600
-      });
-
-      const authUrl = new URL(
-        "https://auth.mercadolivre.com.br/authorization"
+      await env.ML_TOKENS.put(
+        "state:" + state,
+        JSON.stringify({ verifier: pkce.verifier }),
+        { expirationTtl: 600 }
       );
 
+      const authUrl = new URL("https://auth.mercadolivre.com.br/authorization");
       authUrl.searchParams.set("response_type", "code");
       authUrl.searchParams.set("client_id", env.ML_CLIENT_ID);
       authUrl.searchParams.set("redirect_uri", redirectUri(request));
       authUrl.searchParams.set("state", state);
+      authUrl.searchParams.set("code_challenge", pkce.challenge);
+      authUrl.searchParams.set("code_challenge_method", "S256");
 
       return Response.redirect(authUrl.href, 302);
     }
 
-    // Recebe a autorização e guarda os tokens no KV.
+    // Recebe o callback e troca o código pelo token.
     if (url.pathname === "/api/ml-callback") {
       if (url.searchParams.get("error")) {
         return new Response(
@@ -481,9 +437,20 @@ export default {
 
       if (!savedState) {
         return jsonError(
-          "A autorização expirou ou o estado é inválido. Abra /api/ml-auth e tente novamente.",
+          "Estado OAuth inválido ou expirado. Inicie uma nova autorização.",
           400
         );
+      }
+
+      let pkceData;
+      try {
+        pkceData = JSON.parse(savedState);
+      } catch {
+        return jsonError("Dados PKCE inválidos. Tente novamente.", 400);
+      }
+
+      if (!pkceData.verifier) {
+        return jsonError("Code verifier ausente. Inicie uma nova autorização.", 400);
       }
 
       await env.ML_TOKENS.delete(stateKey);
@@ -493,30 +460,30 @@ export default {
         client_id: env.ML_CLIENT_ID,
         client_secret: env.ML_CLIENT_SECRET,
         code,
-        redirect_uri: redirectUri(request)
+        redirect_uri: redirectUri(request),
+        code_verifier: pkceData.verifier
       });
 
-      const response = await fetch(
-        "https://api.mercadolibre.com/oauth/token",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-          },
-          body: form
-        }
-      );
+      const response = await fetch("https://api.mercadolibre.com/oauth/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: form
+      });
 
       if (!response.ok) {
-  const detalhe = await response.text();
-  return new Response(
-    "Erro OAuth HTTP " + response.status + ": " + detalhe,
-    {
-      status: 502,
-      headers: { "Content-Type": "text/plain; charset=utf-8" }
-    }
-  );
-}
+        const detail = await response.text();
+        return new Response(
+          "Erro OAuth HTTP " + response.status + ": " + detail,
+          {
+            status: 502,
+            headers: {
+              "Content-Type": "text/plain; charset=utf-8",
+              "Cache-Control": "no-store"
+            }
+          }
+        );
+      }
+
       const token = await response.json();
       await saveToken(env, token);
 
@@ -531,14 +498,13 @@ export default {
       );
     }
 
-    // Consulta os metadados do produto.
+    // Consulta dados de produto.
     if (url.pathname === "/api/product-meta") {
       if (request.method !== "GET") {
         return jsonError("Método não permitido.", 405);
       }
 
       const raw = url.searchParams.get("url");
-
       if (!raw || raw.length > 3000) {
         return jsonError("Informe um link de produto válido.", 400);
       }
@@ -547,8 +513,8 @@ export default {
         const { response, finalUrl } = await getAllowedPage(raw);
         const html = (await response.text()).slice(0, 3000000);
         const product = parseJsonLd(html);
-
         const originalHost = new URL(raw).hostname.toLowerCase();
+
         const isMercadoLivre =
           originalHost === "meli.la" ||
           originalHost.endsWith(".meli.la") ||
@@ -557,8 +523,6 @@ export default {
           originalHost === "mercadolibre.com" ||
           originalHost.endsWith(".mercadolibre.com");
 
-        // Para Mercado Livre, prioriza exclusivamente o item identificado
-        // e o preço devolvido pela API autenticada.
         if (isMercadoLivre) {
           const itemId = extractMlItemId(finalUrl, html);
 
@@ -576,7 +540,7 @@ export default {
                 oldPrice: "",
                 finalUrl,
                 note:
-                  "Não foi possível identificar um item específico neste link. Abra o anúncio individual do produto e copie o link direto."
+                  "Não foi possível identificar um anúncio individual. Copie o link direto do produto, não o link de perfil ou uma página intermediária."
               },
               { headers: { "Cache-Control": "no-store" } }
             );
@@ -585,12 +549,9 @@ export default {
           const ml = await fetchMlItem(itemId, env);
 
           if (ml.needsAuthorization) {
-            return Response.json(
-              {
-                error:
-                  "Conecte primeiro sua conta do Mercado Livre acessando /api/ml-auth no domínio do Achados Top."
-              },
-              { status: 401 }
+            return jsonError(
+              "Conecte sua conta do Mercado Livre em /api/ml-auth.",
+              401
             );
           }
 
@@ -603,36 +564,30 @@ export default {
               finalUrl: ml.finalUrl || finalUrl,
               note: ml.price
                 ? "Preço obtido da API do Mercado Livre."
-                : "A API não forneceu um preço para este item."
+                : "A API não forneceu preço para este item."
             },
             { headers: { "Cache-Control": "no-store" } }
           );
         }
 
-        // Shopee e TikTok: tenta obter metadados publicados pela própria loja.
-        let title =
+        const title =
           metaValue(html, ["og:title", "twitter:title", "product:title"]) ||
           product?.name ||
           textFromTitle(html);
 
-        let image =
+        const image = absoluteUrl(
           metaValue(html, ["og:image", "twitter:image"]) ||
-          (Array.isArray(product?.image)
-            ? product.image[0]
-            : product?.image) ||
-          "";
-
-        image = absoluteUrl(image, finalUrl);
+          (Array.isArray(product?.image) ? product.image[0] : product?.image) ||
+          "",
+          finalUrl
+        );
 
         const price = extractPrice(html, product);
         const oldPrice = extractOldPrice(html, product);
 
         return Response.json(
           {
-            title: String(title || "")
-              .replace(/\s+/g, " ")
-              .trim()
-              .slice(0, 240),
+            title: String(title || "").replace(/\s+/g, " ").trim().slice(0, 240),
             image,
             price,
             oldPrice,
@@ -646,9 +601,7 @@ export default {
       } catch (error) {
         return Response.json(
           {
-            error:
-              error?.message ||
-              "Não foi possível consultar o produto."
+            error: error?.message || "Não foi possível consultar o produto."
           },
           { status: 422 }
         );
@@ -658,3 +611,4 @@ export default {
     return env.ASSETS.fetch(request);
   }
 };
+    
