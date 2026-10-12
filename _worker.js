@@ -508,14 +508,15 @@ export default {
       );
 
       if (!response.ok) {
-        return new Response(
-          "Não foi possível concluir a autorização (HTTP " +
-          response.status +
-          "). Confira a URI de redirecionamento cadastrada no Mercado Livre.",
-          { status: 502 }
-        );
-      }
-
+  const detalhe = await response.text();
+  return new Response(
+    "Erro OAuth HTTP " + response.status + ": " + detalhe,
+    {
+      status: 502,
+      headers: { "Content-Type": "text/plain; charset=utf-8" }
+    }
+  );
+}
       const token = await response.json();
       await saveToken(env, token);
 
