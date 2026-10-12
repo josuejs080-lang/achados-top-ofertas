@@ -763,19 +763,23 @@ export default {
             );
           }
 
-          if (!ml) {
-            return Response.json(
-              {
-                title:
-                  title:
-  metaValue(html, ["og:title", "twitter:title"]) ||
-  textFromTitle(html),
-image: absoluteUrl(
-  metaValue(html, ["og:image", "twitter:image"]),
-  finalUrl
-),
-price: "",
-oldPrice: "",
-finalUrl,
-note:
-  "Foram encontrados códigos possíveis, mas nenhum retornou um preço confirmado pela API. Use o link individual do produto."
+          
+if (!ml) {
+  return Response.json(
+    {
+      title:
+        metaValue(html, ["og:title", "twitter:title"]) ||
+        textFromTitle(html),
+      image: absoluteUrl(
+        metaValue(html, ["og:image", "twitter:image"]),
+        finalUrl
+      ),
+      price: "",
+      oldPrice: "",
+      finalUrl,
+      note:
+        "Não foi possível confirmar o preço pela API. Use o link individual do produto ou preencha o preço manualmente."
+    },
+    { headers: { "Cache-Control": "no-store" } }
+  );
+}
