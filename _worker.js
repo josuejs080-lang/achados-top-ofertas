@@ -767,4 +767,15 @@ export default {
             return Response.json(
               {
                 title:
-                  metaValue(html, ["og:titl
+                  title:
+  metaValue(html, ["og:title", "twitter:title"]) ||
+  textFromTitle(html),
+image: absoluteUrl(
+  metaValue(html, ["og:image", "twitter:image"]),
+  finalUrl
+),
+price: "",
+oldPrice: "",
+finalUrl,
+note:
+  "Foram encontrados códigos possíveis, mas nenhum retornou um preço confirmado pela API. Use o link individual do produto."
