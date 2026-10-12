@@ -397,41 +397,75 @@ function extractMlItemIds(finalUrl, html = "") {
 }
 
 async function fetchMlItem(itemId, env) {
+
+async function fetchMlItem(itemId, env) {
   const token = await getMlToken(env);
   if (!token) return { needsAuthorization: true };
 
-  const response = await fetch(
-    "https://api.mercadolibre.com/items/" + encodeURIComponent(itemId),
-    {
-      headers: {
-        Authorization: "Bearer " + token.access_token,
-        Accept: "application/json"
-      }
-    }
+  if (!/^MLB\d+$/i.test(itemId)) return null;
+
+  const headers = {
+    Authorization: "Bearer " + token.access_token,
+    Accept: "application/json"
+  };
+
+  const itemResponse = await fetch(
+    "https://api.mercadolibre.com/items/" +
+      encodeURIComponent(itemId),
+    { headers }
   );
 
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(
-      "A API do Mercado Livre não retornou o item (HTTP " +
-      response.status + "): " + detail.slice(0, 300)
+  if (!itemResponse.ok) return null;
+
+  const item = await itemResponse.json();
+
+  let price = "";
+  let oldPrice = "";
+
+  // Consulta oficial do preço de venda e do preço original.
+  try {
+    const saleUrl = new URL(
+      "https://api.mercadolibre.com/items/" +
+      encodeURIComponent(itemId) +
+      "/sale_price"
     );
+
+    saleUrl.searchParams.set("context", "channel_marketplace");
+
+    const saleResponse = await fetch(saleUrl.href, { headers });
+
+    if (saleResponse.ok) {
+      const sale = await saleResponse.json();
+      price = cleanPrice(sale.amount);
+      oldPrice = cleanPrice(sale.regular_amount);
+    }
+  } catch {
+    // Continua para os campos alternativos do anúncio.
   }
 
-  const item = await response.json();
+  // Fallback: usa os dados do item se o endpoint de preços falhar.
+  if (!price) {
+    price = cleanPrice(item.price);
+  }
+
+  if (!oldPrice) {
+    oldPrice = cleanPrice(item.original_price);
+  }
 
   return {
+    id: item.id || itemId,
     title: item.title || "",
     image:
       item.thumbnail ||
       item.pictures?.[0]?.secure_url ||
       item.pictures?.[0]?.url ||
       "",
-    price: cleanPrice(item.price),
-    oldPrice: cleanPrice(item.original_price),
+    price,
+    oldPrice,
     finalUrl: item.permalink || ""
   };
 }
+
 
 /* ===== RESOLUÇÃO DOS LINKS ===== */
 
