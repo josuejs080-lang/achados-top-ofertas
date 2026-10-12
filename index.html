@@ -100,7 +100,7 @@ $('lookup').onclick=async()=>{
  const url=validUrl($('url').value.trim());if(!url){$('status').textContent='Cole um link válido primeiro.';return}
  $('lookup').disabled=true;$('lookup').textContent='Buscando…';$('status').textContent='Consultando a página do produto…';
  try{
-  const r=await fetch('/api/product-meta?url='+encodeURIComponent(url),{headers:{Accept:'application/json'}});
+  const r=await fetch('https://achados-top-api.josuejs080.workers.dev/api/product-meta?url='+encodeURIComponent(url),{headers:{Accept:'application/json'}})
   const d=await r.json();if(!r.ok)throw Error(d.error||'Falha na consulta');
   if(d.title&&!$('title').value.trim())$('title').value=d.title;
   if(d.image&&!$('image').value.trim())$('image').value=d.image;
