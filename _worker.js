@@ -396,16 +396,86 @@ function extractMlItemIds(finalUrl, html = "") {
   return [...ids].slice(0, 12);
 }
 
-async function fetchMlItem(itemId, env) {
+
+function normalizeMlTitle(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\bmercado livre\b/g, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+function mlTitleSimilarity(a, b) {
+  const first = normalizeMlTitle(a);
+  const second = normalizeMlTitle(b);
+
+  if (!first || !second) return 0;
+  if (first === second) return 1;
+
+  const wordsA = new Set(first.split(/\s+/).filter(w => w.length > 1));
+  const wordsB = new Set(second.split(/\s+/).filter(w => w.length > 1));
+
+  if (!wordsA.size || !wordsB.size) return 0;
+
+  let common = 0;
+  for (const word of wordsA) {
+    if (wordsB.has(word)) common++;
+  }
+
+  return common / Math.max(wordsA.size, wordsB.size);
+}
+
+async function searchMlItemIdsByTitle(title, env) {
+  const normalized = normalizeMlTitle(title);
+  if (!normalized || normalized.length < 8) return [];
+
   const token = await getMlToken(env);
-  if (!token) return { needsAuthorization: true };
+  if (!token) return [];
 
-  if (!/^MLB\d+$/i.test(itemId)) return null;
+  const searchUrl = new URL(
+    "https://api.mercadolibre.com/sites/MLB/search"
+  );
 
-  const headers = {
-    Authorization: "Bearer " + token.access_token,
-    Accept: "application/json"
-  };
+  searchUrl.searchParams.set("q", title.slice(0, 180));
+  searchUrl.searchParams.set("limit", "10");
+
+  const response = await fetch(searchUrl.href, {
+    headers: {
+      Authorization: "Bearer " + token.access_token,
+      Accept: "application/json"
+    }
+  });
+
+  if (!response.ok) return [];
+
+  const data = await response.json();
+
+  const candidates = (data.results || [])
+    .map(item => ({
+      id: String(item.id || "").toUpperCase(),
+      title: item.title || "",
+      score: mlTitleSimilarity(title, item.title || "")
+    }))
+    .filter(item => /^MLB\d+$/.test(item.id))
+    .sort((a, b) => b.score - a.score);
+
+  if (!candidates.length || candidates[0].score < 0.80) {
+    return [];
+  }
+
+  // Evita escolher entre resultados praticamente empatados.
+  if (
+    candidates.length > 1 &&
+    candidates[0].score - candidates[1].score < 0.08
+  ) {
+    return [];
+  }
+
+  return [candidates[0].id];
+}
+
 
   const itemResponse = await fetch(
     "https://api.mercadolibre.com/items/" +
