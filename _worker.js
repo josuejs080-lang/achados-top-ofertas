@@ -1,3 +1,4 @@
+
 const ALLOWED_HOSTS = [
   "shopee.com.br",
   "mercadolivre.com.br",
@@ -199,7 +200,6 @@ function shopeePrice(value) {
   const n = Number(value);
   if (!Number.isFinite(n) || n <= 0) return "";
 
-  // A Shopee pode representar o preço em unidades de 1/100000.
   return cleanPrice(n >= 100000 ? n / 100000 : n);
 }
 
@@ -354,45 +354,79 @@ async function getMlToken(env) {
   return saveToken(env, fresh);
 }
 
+/* ===== BUSCA AMPLIADA DE CÓDIGOS DO MERCADO LIVRE ===== */
+
 function extractMlItemIds(finalUrl, html = "") {
   const ids = new Set();
+
+  function addId(value) {
+    if (!value) return;
+
+    const matches = String(value).match(/\bMLB-?\d{6,}\b/gi) || [];
+
+    for (const match of matches) {
+      ids.add(match.replace("-", "").toUpperCase());
+      if (ids.size >= 30) return;
+    }
+  }
 
   function addFromUrl(value) {
     if (!value) return;
 
     try {
       const u = new URL(value, finalUrl);
+      if (!allowedHost(u.hostname)) return;
+
       const pathMatch = u.pathname.match(/\/MLB-?(\d{6,})(?:\/|$)/i);
+      if (pathMatch) addId("MLB" + pathMatch[1]);
 
-      if (pathMatch) ids.add("MLB" + pathMatch[1]);
-
-      const queryId =
-        u.searchParams.get("item_id") ||
-        u.searchParams.get("itemId");
-
-      if (queryId && /^MLB-?\d{6,}$/i.test(queryId)) {
-        ids.add(queryId.replace("-", "").toUpperCase());
-      }
+      addId(u.searchParams.get("item_id"));
+      addId(u.searchParams.get("itemId"));
+      addId(u.searchParams.get("wid"));
+      addId(decodeURIComponent(u.href));
     } catch {}
   }
 
   addFromUrl(finalUrl);
 
+  const tags = html.match(/<(?:link|meta|a)\b[^>]*>/gi) || [];
+
+  for (const tag of tags) {
+    addFromUrl(attr(tag, "href"));
+    addFromUrl(attr(tag, "content"));
+    addId(attr(tag, "href"));
+    addId(attr(tag, "content"));
+
+    if (ids.size >= 30) break;
+  }
+
   const canonical = html.match(
     /<link\b[^>]*rel=["']canonical["'][^>]*>/i
   );
 
-  addFromUrl(canonical ? attr(canonical[0], "href") : "");
-  addFromUrl(metaValue(html, ["og:url", "twitter:url"]));
-
-  const embedded = html.match(/\bMLB-?\d{6,}\b/gi) || [];
-
-  for (const value of embedded) {
-    ids.add(value.replace("-", "").toUpperCase());
-    if (ids.size >= 12) break;
+  if (canonical) {
+    addFromUrl(attr(canonical[0], "href"));
   }
 
-  return [...ids].slice(0, 12);
+  addFromUrl(metaValue(html, ["og:url", "twitter:url"]));
+
+  const decodedHtml = html
+    .replace(/\\u0026/gi, "&")
+    .replace(/\\\//g, "/")
+    .replace(/&amp;/g, "&");
+
+  // Procura códigos MLB no HTML e nos dados incorporados.
+  addId(decodedHtml);
+
+  const foundUrls =
+    decodedHtml.match(/https?:\/\/[^"'<>\\\s]+/gi) || [];
+
+  for (const value of foundUrls) {
+    addFromUrl(value);
+    if (ids.size >= 30) break;
+  }
+
+  return [...ids].slice(0, 30);
 }
 
 async function fetchMlItem(itemId, env) {
@@ -695,7 +729,7 @@ export default {
                 oldPrice: "",
                 finalUrl,
                 note:
-                  "O link não expôs o código do anúncio. Use o link individual do produto, não o link do perfil ou uma página de recomendações."
+                  "O link social não expôs um código MLB identificável. A busca ampliada não encontrou um anúncio individual para consultar."
               },
               { headers: { "Cache-Control": "no-store" } }
             );
@@ -718,7 +752,7 @@ export default {
                 break;
               }
             } catch {
-              // Tenta o próximo ID encontrado.
+              // Tenta o próximo código encontrado.
             }
           }
 
@@ -733,79 +767,4 @@ export default {
             return Response.json(
               {
                 title:
-                  metaValue(html, ["og:title", "twitter:title"]) ||
-                  textFromTitle(html),
-                image: absoluteUrl(
-                  metaValue(html, ["og:image", "twitter:image"]),
-                  finalUrl
-                ),
-                price: "",
-                oldPrice: "",
-                finalUrl,
-                note:
-                  "A página não forneceu um anúncio com preço confirmado pela API. Use o link individual do produto."
-              },
-              { headers: { "Cache-Control": "no-store" } }
-            );
-          }
-
-          return Response.json(
-            {
-              title: ml.title,
-              image: absoluteUrl(ml.image, ml.finalUrl || finalUrl),
-                            price: ml.price,
-              oldPrice: ml.oldPrice,
-              finalUrl: ml.finalUrl || finalUrl,
-              note: "Preço obtido da API do Mercado Livre."
-            },
-            { headers: { "Cache-Control": "no-store" } }
-          );
-        }
-
-        const title =
-          metaValue(html, ["og:title", "twitter:title", "product:title"]) ||
-          product?.name ||
-          textFromTitle(html);
-
-        const image = absoluteUrl(
-          metaValue(html, ["og:image", "twitter:image"]) ||
-          (Array.isArray(product?.image)
-            ? product.image[0]
-            : product?.image) ||
-          "",
-          finalUrl
-        );
-
-        const price = extractPrice(html, product);
-        const oldPrice = extractOldPrice(html, product);
-
-        return Response.json(
-          {
-            title: String(title || "")
-              .replace(/\s+/g, " ")
-              .trim()
-              .slice(0, 240),
-            image,
-            price,
-            oldPrice,
-            finalUrl,
-            note: price
-              ? "Preço encontrado nos metadados da página; confira se corresponde à oferta."
-              : "A loja não disponibilizou um preço legível nesta página."
-          },
-          { headers: { "Cache-Control": "no-store" } }
-        );
-      } catch (error) {
-        return Response.json(
-          {
-            error: error?.message ||
-              "Não foi possível consultar o produto."
-          },
-          { status: 422 }
-        );
-      }
-    }
-
-    return env.ASSETS.fetch(request);
-  }
-};
+                  metaValue(html, ["og:titl
