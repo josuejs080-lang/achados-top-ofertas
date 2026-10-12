@@ -2,123 +2,82 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#1749c8">
-<title>Achados Top — Página de oferta</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#171717">
+<meta name="description" content="Crie e compartilhe ofertas da Shopee e do Mercado Livre.">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<title>Achados Top — Central de ofertas</title>
 <style>
-:root{--blue:#1749c8;--blue2:#1036a4;--green:#087f5b;--ink:#111;--muted:#777;--line:#e6e6e6}
-*{box-sizing:border-box}body{margin:0;background:#f4f4f4;font-family:Arial,Helvetica,sans-serif;color:var(--ink)}
-header.brand-header{background:#fff;padding:10px 14px;text-align:center;border-bottom:1px solid #eee}
-.brand-header img{display:block;width:min(100%,520px);height:auto;max-height:210px;object-fit:contain;margin:0 auto;border-radius:10px}main{max-width:720px;margin:22px auto 44px;padding:0 14px}
-.panel,.offer{background:#fff;border-radius:22px;overflow:hidden;box-shadow:0 10px 28px #001b6333}
-.panel{padding:22px;margin-bottom:20px}h1{font-size:23px;margin:0 0 8px}p.sub{margin:0 0 18px;color:#666;line-height:1.5}
-label{display:block;font-size:14px;font-weight:700;margin:14px 0 6px}
-input,select,textarea{width:100%;border:1px solid #d8d8d8;border-radius:12px;padding:14px;font:inherit;font-size:16px;background:#fff}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
-button,.cta{border:0;border-radius:12px;padding:15px 16px;font-weight:800;font-size:15px;cursor:pointer;text-align:center;text-decoration:none;display:block;width:100%}
-.black{background:#171717;color:#fff;margin-top:12px}.green{background:var(--green);color:white}.pale{background:#f1f1f1;color:#111}
-.status{font-size:13px;line-height:1.45;color:#087f5b;margin-top:10px;min-height:18px}
-.note{font-size:12px;color:#777;line-height:1.5;margin-top:16px}
-.offer{max-width:540px;margin:auto}.photo{display:block;width:100%;height:300px;object-fit:contain;background:#f6f6f6}
-.obody{padding:22px}.time{font-size:12px;color:#888;text-align:right;margin-bottom:28px}.title{font-size:24px;line-height:1.25;margin:0 0 22px}
-.kicker{font-size:13px;color:#777}.price{font-size:37px;font-weight:800;margin:4px 0}.old{font-size:17px;color:#888;text-decoration:line-through;font-weight:400;margin-left:8px}.cash{font-size:13px;color:#777}
-.cta{margin-top:28px;background:var(--green);color:#fff;font-size:17px;padding:17px}
-.coupon{border:2px dashed #e3e3e3;border-radius:14px;padding:14px;margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:10px}
-.coupon strong{font-size:17px;overflow-wrap:anywhere}.coupon button{width:auto;background:transparent;color:#777;padding:8px}
-.store{font-size:12px;color:#777;display:flex;justify-content:space-between;margin-top:24px}
-.disclaimer{text-align:center;font-size:12px;color:#777;line-height:1.5;margin-top:24px}
-.hidden{display:none!important}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
-@media(max-width:520px){.grid,.row{grid-template-columns:1fr}.panel{padding:17px}.photo{height:250px}.title{font-size:21px}.price{font-size:32px}}
+:root{font-family:Arial,Helvetica,sans-serif;color:#171717;background:#f4f4f1;--yellow:#f6b91b;--dark:#171717;--green:#087f5b}
+*{box-sizing:border-box}body{margin:0}header{background:var(--dark);color:#fff;padding-bottom:14px}
+.banner{max-width:1000px;margin:auto}.banner img{display:block;width:100%;height:auto;object-fit:contain}
+.brandline{text-align:center;font-weight:950;letter-spacing:1px;font-size:23px;padding:14px}.brandline span{color:var(--yellow)}
+main{max-width:760px;margin:20px auto;padding:0 13px 36px}.card{background:#fff;border:1px solid #e4e4df;border-radius:18px;padding:20px;margin-bottom:16px;box-shadow:0 6px 20px #00000007}
+h1{font-size:23px;margin:0 0 8px}p{line-height:1.5}.muted{font-size:14px;color:#626262}.label{display:block;font-size:14px;font-weight:750;margin:16px 0 7px}
+input,textarea{width:100%;border:1px solid #d6d6d0;border-radius:11px;padding:13px;font:inherit;background:#fff;color:#171717}
+input:focus,textarea:focus{outline:2px solid var(--yellow);border-color:var(--yellow)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.buttons{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}
+button{border:0;border-radius:11px;padding:13px 15px;font:inherit;font-weight:800;cursor:pointer}.primary{background:var(--yellow);color:#171717}.dark{background:var(--dark);color:#fff}.green{background:var(--green);color:#fff}.light{background:#eee;color:#222}.hidden{display:none!important}
+#status{font-size:13px;line-height:1.5;margin-top:10px;min-height:18px;color:#555}.product{display:grid;grid-template-columns:105px 1fr;gap:14px;margin-top:16px;align-items:start}
+.product img{width:105px;height:105px;object-fit:contain;border-radius:12px;background:#f4f4f1}.ptitle{font-weight:850;font-size:17px;line-height:1.35;overflow-wrap:anywhere}.price{font-size:24px;font-weight:950;margin-top:8px}.small{font-size:12px;color:#666;line-height:1.5}
+.history-item{border:1px solid #e7e7e2;border-radius:12px;padding:12px;margin-top:10px;display:flex;gap:10px;align-items:center}.history-item img{width:55px;height:55px;object-fit:contain;background:#f6f6f2;border-radius:8px}.history-item .info{flex:1;min-width:0}.history-item strong{display:block;overflow-wrap:anywhere}.history-item button{padding:9px;font-size:12px}.footer{text-align:center;font-size:11px;color:#777;padding:5px 20px 25px}
+@media(max-width:520px){.card{padding:16px}.grid{grid-template-columns:1fr}.buttons button{width:100%}.product{grid-template-columns:85px 1fr}.product img{width:85px;height:85px}}
 </style>
 </head>
 <body>
-<header class="brand-header"><img src="logo-achados-top.jpg" alt="Achados Top — Shopee, Mercado Livre e TikTok Shop"></header>
-<main>
-<section id="builder" class="panel">
-<h1>Criar página de oferta</h1>
-<p class="sub">Gere uma página compartilhável com foto, preço, cupom e botão para a loja.</p>
+<header>
+  <div class="banner"><img src="/banner-achados-top.jpg" alt="Banner Achados Top enviado pelo proprietário"></div>
+  <div class="brandline">ACHADOS <span>TOP</span> · CENTRAL DE OFERTAS</div>
+</header>
+<main id="main">
+<section class="card">
+<h1>Criar divulgação</h1>
+<p class="muted">Cole seu link de afiliado. O app tenta importar os dados disponíveis e prepara uma mensagem para compartilhar no WhatsApp.</p>
 <form id="form">
-<label for="store">Loja</label>
-<select id="store"><option>Shopee</option><option selected>Mercado Livre</option><option>TikTok Shop</option></select>
-<label for="url">Link do produto ou afiliado *</label>
-<input id="url" type="url" required placeholder="Cole o link aqui (https://...)">
-<button type="button" class="black" id="lookup">Buscar dados do produto</button>
-<div id="status" class="status" aria-live="polite"></div>
-<label for="title">Nome do produto *</label><input id="title" required placeholder="Nome do produto">
-<div class="grid">
-<div><label for="price">Preço promocional (R$) *</label><input id="price" required inputmode="decimal" placeholder="34,99"></div>
-<div><label for="old">Preço anterior (opcional)</label><input id="old" inputmode="decimal" placeholder="49,90"></div>
-</div>
-<label for="coupon">Cupom (opcional)</label><input id="coupon" placeholder="Ex.: OPAECONOMIZEI">
-<label for="image">Link da imagem (opcional)</label><input id="image" type="url" placeholder="https://...">
-<button class="green" type="submit" style="margin-top:20px">Gerar página de oferta</button>
-<p class="note">Confira preço, cupom e produto antes de publicar. Algumas lojas não disponibilizam os dados por consulta automática. O sistema não inventa preços quando a loja não os fornece.</p>
+<label class="label" for="url">Link de afiliado *</label><input id="url" type="url" placeholder="Cole seu link da Shopee ou Mercado Livre" required>
+<div class="buttons"><button id="lookup" class="dark" type="button">Buscar dados do produto</button></div><div id="status" role="status"></div>
+<div class="product"><img id="preview" class="hidden" alt="Imagem do produto"><div><div id="store" class="small"></div><div id="ptitle" class="ptitle">Nome do produto aparecerá aqui</div><div id="pprice" class="price"></div></div></div>
+<div class="grid"><div><label class="label" for="title">Nome do produto *</label><input id="title" required placeholder="Nome do produto"></div><div><label class="label" for="price">Preço atual (R$) *</label><input id="price" required inputmode="decimal" placeholder="Ex.: 34,90"></div></div>
+<div class="grid"><div><label class="label" for="old">Preço anterior (opcional)</label><input id="old" inputmode="decimal" placeholder="Ex.: 49,90"></div><div><label class="label" for="coupon">Cupom (opcional)</label><input id="coupon" placeholder="Código do cupom"></div></div>
+<label class="label" for="image">Link da imagem (opcional)</label><input id="image" type="url" placeholder="Importado quando disponível">
+<label class="label" for="extra">Informação extra (opcional)</label><input id="extra" placeholder="Ex.: frete grátis, se confirmado">
+<div class="buttons"><button class="primary" type="submit">Gerar oferta e mensagem</button><button class="light" type="button" id="copyLink">Copiar link de afiliado</button></div>
 </form>
-<div id="generated" class="hidden">
-<label for="share">Link da sua página</label><input id="share" readonly>
-<div class="row"><button class="black" id="copy">Copiar link</button><button class="pale" id="preview">Ver página</button></div>
-<div id="copyStatus" class="status"></div>
-</div>
+<div id="generated" class="hidden"><label class="label" for="sharelink">Link da página de oferta</label><input id="sharelink" readonly>
+<div class="buttons"><button id="copyOfferLink" class="dark" type="button">Copiar link da oferta</button><button id="copyMessage" class="green" type="button">Copiar mensagem para WhatsApp</button><button id="shareWhatsApp" class="light" type="button">Abrir WhatsApp</button></div>
+<label class="label" for="message">Mensagem pronta</label><textarea id="message" rows="7" readonly></textarea></div>
+<p class="small">Confira preço, estoque, cupom e imagem no anúncio antes de divulgar. Algumas lojas bloqueiam a importação automática; nesses casos, preencha os campos manualmente. Seu link de afiliado é preservado.</p>
 </section>
-<section id="viewer" class="hidden">
-<article class="offer">
-<img id="vimage" class="photo hidden" alt="Foto do produto">
-<div class="obody">
-<div class="time">Oferta do Achados Top</div>
-<h1 id="vtitle" class="title"></h1>
-<div class="kicker">A partir de:</div>
-<div class="price"><span id="vprice"></span><span id="vold" class="old hidden"></span></div>
-<div class="cash">à vista · confira o valor final na loja</div>
-<div id="vcouponbox" class="coupon hidden"><div><div class="kicker">CUPOM</div><strong id="vcoupon"></strong></div><button id="copycoupon">Copiar</button></div>
-<a id="buy" class="cta" target="_blank" rel="noopener noreferrer">🛒 PEGAR PROMOÇÃO ↗</a>
-<div class="store"><span>Oferta da loja:</span><strong id="vstore"></strong></div>
-<div class="disclaimer">Preço, estoque e disponibilidade podem mudar. Confira os detalhes na loja antes de comprar.</div>
-</div></article>
-<div class="row" style="max-width:540px;margin:16px auto"><button id="back" class="pale">Criar outra oferta</button><button id="copyoffer" class="black">Copiar texto para WhatsApp</button></div>
-<div id="vstatus" class="status" style="color:white;text-align:center"></div>
-</section>
+<section class="card"><h1>Ofertas recentes</h1><p class="muted">Histórico salvo neste aparelho (até 15 ofertas).</p><div id="historyList" class="muted">Nenhuma oferta salva ainda.</div><div class="buttons"><button id="clearHistory" class="light" type="button">Limpar histórico</button><button id="installApp" class="dark hidden" type="button">Instalar Achados Top</button></div></section>
 </main>
+<div class="footer">Achados Top · Preços e disponibilidade podem mudar. Verifique as condições antes de compartilhar.</div>
 <script>
+const API='https://achados-top-api.josuejs080.workers.dev/api/product-meta';
 const $=id=>document.getElementById(id);
-const enc=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-const dec=s=>{try{return JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/')))))}catch{return null}};
-function validUrl(s){try{let u=new URL(s);return /^https?:$/.test(u.protocol)?u.href:''}catch{return ''}}
-function detect(s){try{let h=new URL(s).hostname.toLowerCase();if(h.includes('shopee'))return'Shopee';if(h.includes('meli')||h.includes('mercadolivre')||h.includes('mercadolibre'))return'Mercado Livre';if(h.includes('tiktok'))return'TikTok Shop'}catch{}return ''}
-function fmt(v){let n=Number(String(v).trim().replace(/\./g,'').replace(',','.'));return Number.isFinite(n)?n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}):String(v||'')}
-function render(d){
-$('builder').classList.add('hidden');$('viewer').classList.remove('hidden');
-$('vtitle').textContent=d.title;$('vprice').textContent=fmt(d.price);$('vstore').textContent=d.store;
-$('vold').textContent=d.old?fmt(d.old):'';$('vold').classList.toggle('hidden',!d.old);
-$('vcouponbox').classList.toggle('hidden',!d.coupon);$('vcoupon').textContent=d.coupon||'';
-$('buy').href=validUrl(d.url)||'#';
-if(validUrl(d.image)){$('vimage').src=d.image;$('vimage').classList.remove('hidden')}else $('vimage').classList.add('hidden');
-$('copycoupon').onclick=()=>navigator.clipboard.writeText(d.coupon||'').then(()=>$('vstatus').textContent='Cupom copiado!').catch(()=>{$('vstatus').textContent='Copie o cupom manualmente: '+d.coupon});
-$('copyoffer').onclick=()=>{let t=`🔥 OLHA ESSE ACHADINHO!\n\n${d.title}\n${d.old?'De '+fmt(d.old)+' por ':''}${fmt(d.price)}${d.coupon?'\nCupom: '+d.coupon:''}\n\nConfira aqui: ${location.href}\n\nPreço e disponibilidade podem mudar.`;navigator.clipboard.writeText(t).then(()=>$('vstatus').textContent='Texto copiado para divulgar!').catch(()=>prompt('Copie o texto:',t))};
-}
-$('url').addEventListener('change',()=>{let s=detect($('url').value);if(s)$('store').value=s});
-$('lookup').onclick=async()=>{
- const url=validUrl($('url').value.trim());if(!url){$('status').textContent='Cole um link válido primeiro.';return}
- $('lookup').disabled=true;$('lookup').textContent='Buscando…';$('status').textContent='Consultando a página do produto…';
- try{
-  const r=await fetch('https://achados-top-api.josuejs080.workers.dev/api/product-meta?url='+encodeURIComponent(url),{headers:{Accept:'application/json'}})
-  const d=await r.json();if(!r.ok)throw Error(d.error||'Falha na consulta');
-  if(d.title&&!$('title').value.trim())$('title').value=d.title;
-  if(d.image&&!$('image').value.trim())$('image').value=d.image;
-  if(d.price&&!$('price').value.trim())$('price').value=String(d.price).replace('.',',');
-  if(d.oldPrice&&!$('old').value.trim())$('old').value=String(d.oldPrice).replace('.',',');
-  $('status').textContent=d.price?'Dados importados. Confira antes de publicar.':`Nome/imagem podem ter sido encontrados, mas o preço não veio da página. ${d.note||''}`;
- }catch(e){$('status').textContent='Não foi possível importar automaticamente: '+e.message}
- finally{$('lookup').disabled=false;$('lookup').textContent='Buscar dados do produto'}
-};
-$('form').onsubmit=e=>{
- e.preventDefault();const d={store:$('store').value,url:validUrl($('url').value.trim()),title:$('title').value.trim(),price:$('price').value.trim(),old:$('old').value.trim(),coupon:$('coupon').value.trim(),image:$('image').value.trim()};
- if(!d.url||!d.title||!d.price){alert('Preencha link, nome e preço.');return}
- const base=location.href.split('?')[0].split('#')[0];$('share').value=base+'?oferta='+enc(d);$('generated').classList.remove('hidden');
-};
-$('copy').onclick=()=>navigator.clipboard.writeText($('share').value).then(()=>$('copyStatus').textContent='Link copiado!').catch(()=>{$('share').select();$('copyStatus').textContent='Copie o link selecionado.'});
-$('preview').onclick=()=>location.href=$('share').value;
-$('back').onclick=()=>location.href=location.href.split('?')[0].split('#')[0];
-const q=new URLSearchParams(location.search).get('oferta');if(q){let d=dec(q);if(d&&d.title&&d.price&&validUrl(d.url))render(d)}
+function validLink(v){try{const u=new URL(v);return ['http:','https:'].includes(u.protocol)&&/(shopee|mercadolivre|mercadolibre|meli\.la)/i.test(u.hostname)?u.href:''}catch{return ''}}
+function storeName(v){return /shopee/i.test(v)?'Shopee':/mercadolivre|mercadolibre|meli\.la/i.test(v)?'Mercado Livre':'Loja'}
+function cleanPrice(v){if(v==null||v==='')return '';let s=String(v).trim().replace(/[^\d,.-]/g,'');if(s.includes(',')&&s.includes('.'))s=s.replace(/\./g,'').replace(',','.');else if(s.includes(','))s=s.replace(',','.');const n=Number(s);return Number.isFinite(n)?n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):String(v)}
+function money(v){const p=cleanPrice(v);return p?'R$ '+p:''}
+function status(t,err=false){$('status').textContent=t;$('status').style.color=err?'#b42318':'#555'}
+function preview(){const t=$('title').value.trim();$('ptitle').textContent=t||'Nome do produto aparecerá aqui';$('pprice').textContent=money($('price').value);const im=$('image').value.trim();if(im){$('preview').src=im;$('preview').classList.remove('hidden')}else $('preview').classList.add('hidden')}
+['title','price','image'].forEach(id=>$(id).addEventListener('input',preview));
+$('lookup').onclick=async()=>{const url=validLink($('url').value.trim());if(!url){status('Cole um link válido da Shopee ou do Mercado Livre.',true);return}$('lookup').disabled=true;$('lookup').textContent='Buscando…';$('store').textContent=storeName(url);status('Tentando importar os dados disponíveis…');try{const r=await fetch(API+'?url='+encodeURIComponent(url));const d=await r.json();if(d.title)$('title').value=d.title;if(d.price!=null&&d.price!=='')$('price').value=cleanPrice(d.price);if(d.oldPrice!=null&&d.oldPrice!=='')$('old').value=cleanPrice(d.oldPrice);if(d.image)$('image').value=d.image;preview();status(d.title||d.image||d.price?'Dados encontrados quando disponíveis. Confira o anúncio antes de divulgar.':'A loja não forneceu os dados automaticamente. Preencha os campos manualmente.')}catch(e){status('Não foi possível importar automaticamente. Preencha os campos manualmente.',true)}finally{$('lookup').disabled=false;$('lookup').textContent='Buscar dados do produto'}};
+function history(){try{return JSON.parse(localStorage.getItem('achadosTopHistory')||'[]')}catch{return []}}
+function drawHistory(){const root=$('historyList');root.replaceChildren();const list=history();if(!list.length){root.textContent='Nenhuma oferta salva ainda.';return}list.forEach(d=>{const row=document.createElement('div');row.className='history-item';if(d.image){const im=document.createElement('img');im.src=d.image;im.alt='';row.append(im)}const info=document.createElement('div');info.className='info';const t=document.createElement('strong');t.textContent=d.title;const p=document.createElement('span');p.textContent=money(d.price);info.append(t,p);const b=document.createElement('button');b.className='light';b.textContent='Reabrir';b.onclick=()=>{['url','title','price','old','coupon','image','extra'].forEach((id,i)=>$(id).value=[d.url,d.title,d.price,d.old||'',d.coupon||'',d.image||'',d.extra||''][i]);$('store').textContent=d.store;preview();window.scrollTo({top:0,behavior:'smooth'})};row.append(info,b);root.append(row)})}
+function saveHistory(d){const list=history().filter(x=>x.url!==d.url||x.title!==d.title);list.unshift({...d,savedAt:new Date().toISOString()});try{localStorage.setItem('achadosTopHistory',JSON.stringify(list.slice(0,15)))}catch{}drawHistory()}
+$('clearHistory').onclick=()=>{if(confirm('Apagar o histórico deste aparelho?')){localStorage.removeItem('achadosTopHistory');drawHistory()}};
+function message(d){let m='🔥 OLHA ESSE ACHADINHO!\n\n✨ '+d.title+'\n';if(d.price)m+='💰 Por '+money(d.price)+'\n';if(d.old)m+='🏷️ Antes: '+money(d.old)+'\n';if(d.coupon)m+='🎟️ Cupom: '+d.coupon+'\n';if(d.extra)m+='📌 '+d.extra+'\n';return m+'\n🛒 Confira aqui: '+d.url+'\n\n⚠️ Preço e disponibilidade podem mudar.'}
+function encode(d){const bytes=new TextEncoder().encode(JSON.stringify(d));let s='';bytes.forEach(b=>s+=String.fromCharCode(b));return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+$('form').onsubmit=e=>{e.preventDefault();const url=validLink($('url').value.trim());if(!url){status('Confira o link de afiliado.',true);return}const d={url,title:$('title').value.trim(),price:$('price').value.trim(),old:$('old').value.trim(),coupon:$('coupon').value.trim(),image:$('image').value.trim(),extra:$('extra').value.trim(),store:storeName(url)};if(!d.title||!d.price){status('Preencha o nome e o preço atual do anúncio.',true);return}const base=location.href.split('?')[0].split('#')[0];$('sharelink').value=base+'?oferta='+encode(d);$('message').value=message(d);$('generated').classList.remove('hidden');saveHistory(d);status('Oferta criada. Copie a mensagem ou o link para divulgar.')};
+async function copy(t){try{await navigator.clipboard.writeText(t);status('Copiado!')}catch{prompt('Copie o texto abaixo:',t)}}
+$('copyLink').onclick=()=>{const u=validLink($('url').value.trim());if(u)copy(u);else status('Cole primeiro seu link de afiliado.',true)};
+$('copyOfferLink').onclick=() =>copy($('sharelink').value);$('copyMessage').onclick=()=>copy($('message').value);
+$('shareWhatsApp').onclick=()=>window.open('https://wa.me/?text='+encodeURIComponent($('message').value),'_blank','noopener');
+function shared(d){$('main').replaceChildren();const c=document.createElement('section');c.className='card';const h=document.createElement('h1');h.textContent=d.title;c.append(h);if(d.image){const im=document.createElement('img');im.src=d.image;im.alt=d.title;im.style.cssText='width:100%;max-height:340px;object-fit:contain';c.append(im)}const p=document.createElement('p');p.className='price';p.textContent=money(d.price);c.append(p);if(d.old){const o=document.createElement('p');o.textContent='Antes: '+money(d.old);c.append(o)}if(d.coupon){const cp=document.createElement('p');cp.textContent='Cupom: '+d.coupon;c.append(cp)}const a=document.createElement('a');a.href=d.url;a.target='_blank';a.rel='noopener';a.textContent='VER OFERTA';a.className='primary';a.style.cssText='display:block;text-align:center;text-decoration:none;padding:15px;border-radius:12px;font-weight:900;color:#171717;margin-top:16px';c.append(a);$('main').append(c)}
+try{const q=new URLSearchParams(location.search).get('oferta');if(q){let s=q.replace(/-/g,'+').replace(/_/g,'/');s+='='.repeat((4-s.length%4)%4);const d=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(s),c=>c.charCodeAt(0))));if(d.title&&d.price&&validLink(d.url))shared(d)}}catch{}
+let promptEvent=null;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();promptEvent=e;$('installApp').classList.remove('hidden')});$('installApp').onclick=async()=>{if(!promptEvent){alert('No Chrome, abra o menu ⋮ e escolha Adicionar à tela inicial.');return}promptEvent.prompt();await promptEvent.userChoice;promptEvent=null;$('installApp').classList.add('hidden')};
+if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/service-worker.js').catch(()=>{}));drawHistory();
 </script>
 </body>
 </html>
